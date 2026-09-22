@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Competitive AI-Tool Radar — live run</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAFAF7; --surface:#FFFFFF; --ink:#1C2128; --muted:#68707B; --line:#DBDEE3;
+    --accent:#3454D1; --accent-soft:#EEF1FC;
+    --keep:#1F7A54; --keep-soft:#E9F5EF;
+    --drop:#B5540B; --drop-soft:#FBEEE3;
+    --code-bg:#F1F0EA;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14171C; --surface:#1B1F27; --ink:#E7E9ED; --muted:#98A1AC; --line:#2B303A;
+      --accent:#8CA2FF; --accent-soft:#20263A;
+      --keep:#5FCB9B; --keep-soft:#17261F;
+      --drop:#E8975A; --drop-soft:#2A2018;
+      --code-bg:#20242C;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+    padding:32px 20px 60px;
+  }
+  .wrap{max-width:1080px;margin:0 auto;}
+  .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:600;margin:0 0 8px;}
+  h1{font-size:clamp(22px,4vw,30px);line-height:1.15;margin:0 0 10px;letter-spacing:-.01em;}
+  .intro{color:var(--muted);font-size:14.5px;line-height:1.6;max-width:70ch;margin:0 0 28px;}
+
+  .controls{
+    display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end;
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    padding:16px 18px; margin-bottom:28px;
+  }
+  .field{display:flex; flex-direction:column; gap:5px;}
+  .field label{font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted);}
+  select{
+    font:13px 'IBM Plex Mono',monospace; padding:7px 10px; border-radius:7px;
+    border:1px solid var(--line); background:var(--bg); color:var(--ink);
+  }
+  .keybadge{font-size:10.5px; color:var(--muted); margin-top:2px;}
+  .keybadge.ok{color:var(--keep);}
+  button#run-btn{
+    font:600 13.5px 'IBM Plex Sans',sans-serif; padding:10px 20px; border-radius:8px;
+    border:none; background:var(--accent); color:#fff; cursor:pointer;
+  }
+  button#run-btn:disabled{opacity:.5; cursor:not-allowed;}
+  #status-text{font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--muted); margin-left:auto; align-self:center;}
+
+  .grid{display:grid; grid-template-columns: 1.1fr 1.4fr; gap:20px;}
+  @media (max-width:860px){ .grid{grid-template-columns:1fr;} }
+
+  .panel{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px 20px;}
+  .panel h2{font-size:15px; margin:0 0 4px;}
+  .panel .sub{color:var(--muted); font-size:12.5px; margin:0 0 16px;}
+
+  .stage{
+    display:flex; align-items:center; gap:12px; padding:10px 8px; border-radius:8px;
+    border:1px solid transparent; opacity:.55; transition:opacity .2s, background .2s, border-color .2s;
+  }
+  .stage.active{opacity:1; background:var(--accent-soft); border-color:var(--accent);}
+  .stage.done{opacity:1;}
+  .stage .badge{
+    width:24px; height:24px; border-radius:50%; background:var(--code-bg); color:var(--muted);
+    display:flex; align-items:center; justify-content:center; font:600 11.5px 'IBM Plex Mono',monospace; flex:none;
+  }
+  .stage.active .badge{background:var(--accent); color:#fff;}
+  .stage.done .badge{background:var(--keep); color:#fff;}
+  .stage .name{font-weight:600; font-size:13.5px;}
+  .stage .detail{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--muted); margin-left:auto; text-align:right;}
+  .stage.gate .badge{background:var(--code-bg); color:var(--muted); font-size:9px;}
+  .stage.gate.active .badge, .stage.gate.done .badge{background:var(--accent); color:#fff;}
+
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  thead th{
+    text-align:left; font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.05em;
+    text-transform:uppercase; color:var(--muted); font-weight:600; padding:0 8px 8px 0; border-bottom:1px solid var(--line);
+  }
+  tbody td{padding:9px 8px 9px 0; border-bottom:1px solid var(--line); vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  .entity-cell{font-weight:600;}
+  .source-sub{display:block; color:var(--muted); font-weight:400; font-size:11px;}
+  .cat-badge{
+    font-family:'IBM Plex Mono',monospace; font-size:10.5px; padding:2px 7px; border-radius:20px;
+    background:var(--code-bg); color:var(--ink); white-space:nowrap;
+  }
+  .relbar{width:70px; height:6px; border-radius:4px; background:var(--code-bg); overflow:hidden; display:inline-block; vertical-align:middle; margin-right:6px;}
+  .relbar > span{display:block; height:100%; background:var(--accent);}
+  .num{font-family:'IBM Plex Mono',monospace; font-variant-numeric:tabular-nums;}
+  .lat{font-family:'IBM Plex Mono',monospace; color:var(--muted); font-size:11px;}
+  tr.escalate .cat-badge{background:var(--keep-soft); color:var(--keep);}
+  tr.discard .cat-badge{background:var(--drop-soft); color:var(--drop);}
+  .decision-pill{font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:600; padding:2px 8px; border-radius:20px;}
+  .decision-pill.escalate{background:var(--keep-soft); color:var(--keep);}
+  .decision-pill.discard{background:var(--drop-soft); color:var(--drop);}
+
+  #jev-table-wrap, #final-table-wrap{max-height:420px; overflow-y:auto;}
+
+  #brief-list{display:flex; flex-direction:column; gap:12px; margin-top:14px;}
+  .brief-card{border:1px solid var(--line); border-radius:10px; padding:12px 14px; background:var(--bg);}
+  .brief-card .entity-cell{display:block; margin-bottom:4px;}
+  .brief-card p{margin:0; font-size:12.5px; line-height:1.55; color:var(--ink);}
+
+  footer{margin-top:32px; font-size:12px; color:var(--muted); text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Live run</p>
+  <h1>Competitive AI-Tool Radar</h1>
+  <p class="intro">
+    Watch a real run of the pipeline stage by stage. The panel on the right is Jev
+    (TypeSafe AI's System One model) judging every item that survives dedup —
+    Choice (category), Score (relevance), and Noul (is this a genuinely new entrant),
+    each with its own confidence, returned in well under a second per item.
+  </p>
+
+  <div class="controls">
+    <div class="field">
+      <label for="sel-extract">Extract</label>
+      <select id="sel-extract">
+        <option value="mock">Mock (canned sample)</option>
+        <option value="browser-use">browser-use (live, ~30-90s)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="sel-triage">Triage</label>
+      <select id="sel-triage">
+        <option value="mock">Mock (keyword heuristic)</option>
+        <option value="typesafe">TypeSafe AI — Jev</option>
+      </select>
+      <span class="keybadge" id="typesafe-key-badge">checking key…</span>
+    </div>
+    <div class="field">
+      <label for="sel-generate">Generate</label>
+      <select id="sel-generate">
+        <option value="mock">Mock (template)</option>
+        <option value="claude">Claude</option>
+      </select>
+      <span class="keybadge" id="anthropic-key-badge">checking key…</span>
+    </div>
+    <button id="run-btn">Run pipeline</button>
+    <span id="status-text">idle</span>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Pipeline</h2>
+      <p class="sub">Same 8 stages as the architecture diagram, updating live.</p>
+      <div id="stages"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Jev — triage judgments</h2>
+      <p class="sub">Per-item Choice / Score / Noul, streamed as each call returns.</p>
+      <div id="jev-table-wrap">
+        <table>
+          <thead>
+            <tr><th>Entity</th><th>Category (Choice)</th><th>Relevance (Score)</th><th>Conf.</th><th>Noul</th><th>Latency</th></tr>
+          </thead>
+          <tbody id="jev-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
+    <h2>Escalated briefs</h2>
+    <p class="sub">Only items that survived the gate reach generation — the expensive stage.</p>
+    <div id="brief-list"></div>
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
+    <h2>dashboard.sqlite</h2>
+    <p class="sub">Final persisted state after this run.</p>
+    <div id="final-table-wrap">
+      <table>
+        <thead>
+          <tr><th>Entity</th><th>Source</th><th>Decision</th><th>Category</th><th>Score</th></tr>
+        </thead>
+        <tbody id="final-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>Local demo · dashboard.py · resets dashboard.sqlite on every run</footer>
+</div>
+
+<script>
+const STAGES = [
+  {key:"extract",  index:1, name:"browser-use Agent — extract"},
+  {key:"validate", index:2, name:"Pydantic — validate"},
+  {key:"dedup",    index:3, name:"Dedup check"},
+  {key:"triage",   index:4, name:"Jev — triage"},
+  {key:"gate",     index:"?", name:"Gate: relevance ≥ threshold?", gate:true},
+  {key:"generate", index:6, name:"Deep dive (mocked) + generate"},
+  {key:"persist",  index:7, name:"Persist"},
+  {key:"deliver",  index:8, name:"Deliver"},
+];
+
+const stagesEl = document.getElementById("stages");
+const stageEls = {};
+for (const s of STAGES) {
+  const row = document.createElement("div");
+  row.className = "stage" + (s.gate ? " gate" : "");
+  row.innerHTML = `<div class="badge">${s.index}</div><div class="name">${s.name}</div><div class="detail"></div>`;
+  stagesEl.appendChild(row);
+  stageEls[s.key] = row;
+}
+
+const jevTbody = document.getElementById("jev-tbody");
+const finalTbody = document.getElementById("final-tbody");
+const briefList = document.getElementById("brief-list");
+const statusText = document.getElementById("status-text");
+const runBtn = document.getElementById("run-btn");
+
+function resetView() {
+  for (const el of Object.values(stageEls)) {
+    el.classList.remove("active", "done");
+    el.querySelector(".detail").textContent = "";
+  }
+  jevTbody.innerHTML = "";
+  finalTbody.innerHTML = "";
+  briefList.innerHTML = "";
+}
+
+function relBar(score, max) {
+  const pct = Math.max(0, Math.min(100, (score / max) * 100));
+  return `<span class="relbar"><span style="width:${pct}%"></span></span>${score.toFixed(1)}`;
+}
+
+function handleEvent(msg) {
+  const { event, payload } = msg;
+
+  if (event === "run_started") {
+    statusText.textContent = `running — extract:${payload.extract_provider} triage:${payload.triage_provider} generate:${payload.generate_provider}`;
+  }
+
+  if (event === "stage_start") {
+    const el = stageEls[payload.stage];
+    if (el) el.classList.add("active");
+  }
+
+  if (event === "stage_done") {
+    const el = stageEls[payload.stage];
+    if (!el) return;
+    el.classList.remove("active");
+    el.classList.add("done");
+    const detail = el.querySelector(".detail");
+    if (payload.stage === "extract") detail.textContent = `${payload.count} items`;
+    if (payload.stage === "validate") detail.textContent = `${payload.count} valid`;
+    if (payload.stage === "dedup") detail.textContent = `${payload.new} new / ${payload.skipped} skipped`;
+    if (payload.stage === "triage") detail.textContent = `${payload.count} judged`;
+    if (payload.stage === "gate") detail.textContent = `${payload.escalated} escalate / ${payload.discarded} discard`;
+    if (payload.stage === "generate") detail.textContent = `${payload.count} briefs`;
+    if (payload.stage === "persist") detail.textContent = `${payload.count} rows`;
+    if (payload.stage === "deliver") detail.textContent = `${payload.surfaced} surfaced`;
+  }
+
+  if (event === "triage_item") {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="entity-cell">${payload.entity}<span class="source-sub">${payload.source.replace("_"," ")}</span></td>
+      <td><span class="cat-badge">${payload.category}</span> <span class="lat">${(payload.category_confidence*100).toFixed(0)}%</span></td>
+      <td class="num">${relBar(payload.relevance_score, 2.0)}</td>
+      <td class="num">${(payload.relevance_confidence*100).toFixed(0)}%</td>
+      <td class="num">${(payload.is_new_entrant*100).toFixed(0)}%</td>
+      <td class="lat">${payload.latency_ms.toFixed(0)} ms</td>`;
+    jevTbody.prepend(tr);
+  }
+
+  if (event === "brief_written") {
+    const card = document.createElement("div");
+    card.className = "brief-card";
+    card.innerHTML = `<span class="entity-cell">${payload.entity}</span><p>${payload.brief}</p>`;
+    briefList.prepend(card);
+  }
+
+  if (event === "run_complete") {
+    statusText.textContent = `done — extracted ${payload.extracted}, escalated ${payload.escalated}, discarded ${payload.discarded}`;
+    runBtn.disabled = false;
+    loadFinalTable();
+  }
+
+  if (event === "run_error") {
+    statusText.textContent = `error: ${payload.message}`;
+    runBtn.disabled = false;
+  }
+}
+
+async function loadFinalTable() {
+  const rows = await fetch("/api/dashboard").then(r => r.json());
+  finalTbody.innerHTML = "";
+  for (const row of rows) {
+    const tr = document.createElement("tr");
+    tr.className = row.status === "escalated" ? "escalate" : "discard";
+    tr.innerHTML = `
+      <td class="entity-cell">${row.entity}</td>
+      <td class="lat">${row.source.replace("_"," ")}</td>
+      <td><span class="decision-pill ${row.status === "escalated" ? "escalate" : "discard"}">${row.status}</span></td>
+      <td><span class="cat-badge">${row.category}</span></td>
+      <td class="num">${row.relevance_score.toFixed(1)}</td>`;
+    finalTbody.appendChild(tr);
+  }
+}
+
+let es = null;
+function connectStream() {
+  es = new EventSource("/api/stream");
+  es.onmessage = (e) => handleEvent(JSON.parse(e.data));
+}
+connectStream();
+
+runBtn.addEventListener("click", async () => {
+  resetView();
+  runBtn.disabled = true;
+  statusText.textContent = "starting…";
+  const body = {
+    extract: document.getElementById("sel-extract").value,
+    triage: document.getElementById("sel-triage").value,
+    generate: document.getElementById("sel-generate").value,
+  };
+  const res = await fetch("/api/run", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    statusText.textContent = "error: " + (err.error || res.statusText);
+    runBtn.disabled = false;
+  }
+});
+
+fetch("/api/defaults").then(r => r.json()).then(d => {
+  const tsBadge = document.getElementById("typesafe-key-badge");
+  const clBadge = document.getElementById("anthropic-key-badge");
+  if (d.has_typesafe_key) {
+    tsBadge.textContent = "TYPESAFE_API_KEY set";
+    tsBadge.classList.add("ok");
+    document.getElementById("sel-triage").value = "typesafe";
+  } else {
+    tsBadge.textContent = "no TYPESAFE_API_KEY — mock only";
+  }
+  if (d.has_anthropic_key) {
+    clBadge.textContent = "ANTHROPIC_API_KEY set";
+    clBadge.classList.add("ok");
+    document.getElementById("sel-generate").value = "claude";
+  } else {
+    clBadge.textContent = "no ANTHROPIC_API_KEY — mock only";
+  }
+});
+</script>
+</body>
+</html>
