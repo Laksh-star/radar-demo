@@ -101,6 +101,11 @@
   .decision-pill{font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:600; padding:2px 8px; border-radius:20px;}
   .decision-pill.escalate{background:var(--keep-soft); color:var(--keep);}
   .decision-pill.discard{background:var(--drop-soft); color:var(--drop);}
+  .new-entrant-badge{
+    font-family:'IBM Plex Mono',monospace; font-size:9.5px; font-weight:600;
+    padding:1px 5px; border-radius:20px; background:var(--keep-soft); color:var(--keep);
+    white-space:nowrap;
+  }
 
   #jev-table-wrap, #final-table-wrap{max-height:420px; overflow-y:auto;}
 
@@ -284,14 +289,21 @@ function handleEvent(msg) {
 
   if (event === "triage_item") {
     const tr = document.createElement("tr");
+    tr.dataset.entityKey = `${payload.entity}::${payload.source}`;
     tr.innerHTML = `
       <td class="entity-cell">${payload.entity}<span class="source-sub">${payload.source.replace("_"," ")}</span></td>
       <td><span class="cat-badge">${payload.category}</span> <span class="lat">${(payload.category_confidence*100).toFixed(0)}%</span></td>
       <td class="num">${relBar(payload.relevance_score, 2.0)}</td>
       <td class="num">${(payload.relevance_confidence*100).toFixed(0)}%</td>
-      <td class="num">${(payload.is_new_entrant*100).toFixed(0)}%</td>
+      <td class="num"><span class="noul-cell">${(payload.is_new_entrant*100).toFixed(0)}%</span></td>
       <td class="lat">${payload.latency_ms.toFixed(0)} ms</td>`;
     jevTbody.prepend(tr);
+  }
+
+  if (event === "gate_item" && payload.via_new_entrant) {
+    const row = jevTbody.querySelector(`tr[data-entity-key="${payload.entity}::${payload.source}"]`);
+    const cell = row && row.querySelector(".noul-cell");
+    if (cell) cell.innerHTML += ` <span class="new-entrant-badge" title="Escalated on Noul alone — below the normal relevance bar">NEW→ESCALATED</span>`;
   }
 
   if (event === "deep_dive_item") {

@@ -130,13 +130,25 @@ def run_pipeline(
     for item, t in judged:
         escalate = gate.should_escalate(t)
         (escalated if escalate else discarded).append((item, t))
+        # True only when Noul is the reason this item escalated — it's a
+        # confident new entrant that wouldn't have cleared the normal
+        # relevance bar on its own. Purely for visibility; should_escalate()
+        # already made the actual decision.
+        via_new_entrant = (
+            escalate
+            and t.is_new_entrant >= gate.NEW_ENTRANT_THRESHOLD
+            and t.relevance_score < gate.RELEVANCE_THRESHOLD
+        )
         emit(
             "gate_item",
             {
                 "entity": item.entity,
+                "source": item.source.value,
                 "decision": "escalate" if escalate else "discard",
                 "relevance_score": t.relevance_score,
                 "relevance_confidence": t.relevance_confidence,
+                "is_new_entrant": t.is_new_entrant,
+                "via_new_entrant": via_new_entrant,
             },
         )
     emit("stage_done", {"stage": "gate", "escalated": len(escalated), "discarded": len(discarded)})
@@ -217,6 +229,12 @@ def console_emit(event: str, payload: dict) -> None:
         print(
             f"  {payload['entity'][:32]:32s}  category={payload['category']:<18s} "
             f"relevance={payload['relevance_score']:.1f} conf={payload['relevance_confidence']:.2f}"
+        )
+    elif event == "gate_item" and payload["via_new_entrant"]:
+        print(
+            f"  NOUL OVERRIDE  {payload['entity']} escalated at relevance "
+            f"{payload['relevance_score']:.1f} (below the {gate.RELEVANCE_THRESHOLD:.1f} bar) "
+            f"— new-entrant confidence {payload['is_new_entrant']:.0%}"
         )
     elif event == "deep_dive_item":
         print(f"  DIVE  {payload['entity']}\n    -> {payload['detail']}")

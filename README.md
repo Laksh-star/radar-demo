@@ -63,7 +63,7 @@ deep-dive detail, the generated briefs, and the final persisted state:
 | `models.py` | real | the `RawSignal` / `TriageResult` / `Signal` Pydantic contracts |
 | `extract.py` | real | pluggable `ExtractionProvider` interface — `BrowserUseExtract` runs a real browser-use `Agent` against Hacker News / GitHub Trending (Product Hunt excluded, see below), `MockExtract` returns the canned `sample_sources.py` batch (all 3 sources) |
 | `triage.py` | real | pluggable `TriageProvider` interface — `TypeSafeTriage` makes the real `/v1/systemone` call, `MockTriage` is the original keyword heuristic kept as a no-key fallback |
-| `gate.py` | real | the actual threshold logic (`relevance_score >= 1.0 and relevance_confidence >= 0.6`) |
+| `gate.py` | real | threshold logic using all three of Jev's judgments — a confident new entrant (Noul) clears the gate at a lower relevance bar than a repost or known name would; see below |
 | `store.py` | real | SQLite-backed dedup table + persistence — stands in for your `create_brief` / `get_trending_competitors` tools |
 | `deep_dive.py` | real | pluggable `DeepDiveProvider` interface — `BrowserUseDeepDive` opens each escalated item's own url and summarizes what's actually there, `MockDeepDive` passes the stage-1 description straight through |
 | `generate.py` | real | pluggable `GenerateProvider` interface — `ClaudeGenerate` calls the Anthropic API using stage 5's enriched detail, `MockGenerate` is the original templated placeholder kept as a no-key fallback |
@@ -75,6 +75,30 @@ opens each escalated item's own url and hands `generate.py` a couple of
 concrete facts instead of just the stage-1 blurb. Every real integration
 either runs for real when its key is set, or falls back to a free, keyless
 mock so the pipeline always completes.
+
+### The gate uses all three of Jev's judgments, not just Score
+
+Jev returns three answers per item — Choice (category), Score (relevance),
+and Noul (confidence this is a genuinely new entrant, not a repost). The
+gate originally only checked Score and its confidence; Noul was requested,
+displayed, and persisted, but never changed a decision, which undersold
+what Jev actually does. Now:
+
+```python
+# gate.py
+if triage.relevance_confidence < CONFIDENCE_THRESHOLD:
+    return False
+if triage.is_new_entrant >= NEW_ENTRANT_THRESHOLD:      # confident new entrant
+    return triage.relevance_score >= NEW_ENTRANT_RELEVANCE_THRESHOLD  # lower bar: 0.7
+return triage.relevance_score >= RELEVANCE_THRESHOLD    # normal bar: 1.0
+```
+
+A confident first-sighting of a genuinely new competitor is exactly the
+kind of thing worth catching before it's built up the same relevance a
+familiar name would need — so it escalates at 0.7 instead of 1.0. When this
+is the deciding factor, the dashboard tags that item's Noul score with a
+**NEW→ESCALATED** badge, and the CLI trace prints a `NOUL OVERRIDE` line —
+so the fact that Noul changed an outcome is visible, not just logged.
 
 ### Extract provider selection
 
