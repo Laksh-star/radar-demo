@@ -1,5 +1,7 @@
 # Competitive AI-Tool Radar — runnable demo
 
+[![GitHub repo](https://img.shields.io/badge/GitHub-Laksh--star%2Fradar--demo-blue?logo=github)](https://github.com/Laksh-star/radar-demo)
+
 This is the pipeline from the architecture diagram, actually running. Every
 stage has a real implementation now; the ones needing a paid API key fall
 back to a free mock when the key isn't set, so it always runs end to end.
