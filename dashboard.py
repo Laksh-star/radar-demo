@@ -26,6 +26,7 @@ load_dotenv()  # populates os.environ from .env before any get_*_provider() read
 
 from flask import Flask, Response, jsonify, request, send_from_directory
 
+import deep_dive
 import extract
 import generate
 import pipeline
@@ -53,16 +54,23 @@ def _build_triage_provider(choice: str) -> triage.TriageProvider:
     return triage.TypeSafeTriage() if choice == "typesafe" else triage.MockTriage()
 
 
+def _build_deep_dive_provider(choice: str) -> deep_dive.DeepDiveProvider:
+    return deep_dive.BrowserUseDeepDive() if choice == "browser-use" else deep_dive.MockDeepDive()
+
+
 def _build_generate_provider(choice: str) -> generate.GenerateProvider:
     return generate.ClaudeGenerate() if choice == "claude" else generate.MockGenerate()
 
 
-def _run_in_background(extract_choice: str, triage_choice: str, generate_choice: str) -> None:
+def _run_in_background(
+    extract_choice: str, triage_choice: str, deep_dive_choice: str, generate_choice: str
+) -> None:
     global _running
     try:
         pipeline.run_pipeline(
             extract_provider=_build_extract_provider(extract_choice),
             triage_provider=_build_triage_provider(triage_choice),
+            deep_dive_provider=_build_deep_dive_provider(deep_dive_choice),
             generate_provider=_build_generate_provider(generate_choice),
             emit=_broadcast,
         )
@@ -102,6 +110,7 @@ def api_run():
         args=(
             body.get("extract", "mock"),
             body.get("triage", "mock"),
+            body.get("deep_dive", "mock"),
             body.get("generate", "mock"),
         ),
         daemon=True,

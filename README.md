@@ -56,15 +56,16 @@ judgment call fast enough to watch happen live.
 | `triage.py` | real | pluggable `TriageProvider` interface — `TypeSafeTriage` makes the real `/v1/systemone` call, `MockTriage` is the original keyword heuristic kept as a no-key fallback |
 | `gate.py` | real | the actual threshold logic (`relevance_score >= 1.0 and relevance_confidence >= 0.6`) |
 | `store.py` | real | SQLite-backed dedup table + persistence — stands in for your `create_brief` / `get_trending_competitors` tools |
-| `generate.py` | real | pluggable `GenerateProvider` interface — `ClaudeGenerate` calls the Anthropic API, `MockGenerate` is the original templated placeholder kept as a no-key fallback |
+| `deep_dive.py` | real | pluggable `DeepDiveProvider` interface — `BrowserUseDeepDive` opens each escalated item's own url and summarizes what's actually there, `MockDeepDive` passes the stage-1 description straight through |
+| `generate.py` | real | pluggable `GenerateProvider` interface — `ClaudeGenerate` calls the Anthropic API using stage 5's enriched detail, `MockGenerate` is the original templated placeholder kept as a no-key fallback |
 | `pipeline.py` | real | `run_pipeline()` orchestrates all 8 stages and emits an event per step; `pipeline.py`'s own `main()` prints a trace, `dashboard.py` renders those same events live |
 | `dashboard.py` | real | Flask + Server-Sent Events; a local web view of a run, with a dedicated live panel for Jev's per-item judgments |
 
-Every stage now has a real path. The only thing that still doesn't exist at
-all — real or mocked — is stage 5's second browser-use "deep dive" pass on
-survivors; `generate.py` writes straight from the stage-4 triage
-description instead. Everything else either runs for real when its key is
-set, or falls back to a free, keyless mock so the pipeline always completes.
+Every stage now has a real path — including stage 5's deep dive, which
+opens each escalated item's own url and hands `generate.py` a couple of
+concrete facts instead of just the stage-1 blurb. Every real integration
+either runs for real when its key is set, or falls back to a free, keyless
+mock so the pipeline always completes.
 
 ### Extract provider selection
 
@@ -118,13 +119,38 @@ Both implement the `TriageProvider` interface (`triage(raw: RawSignal) ->
 TriageResult`), so `gate.py`, `pipeline.py`, and everything downstream don't
 care which one ran.
 
+### Deep dive provider selection
+
+`deep_dive.get_deep_dive_provider()` reads `DEEP_DIVE_PROVIDER` from the
+environment. Like extraction, this **defaults to `mock`** even when
+`ANTHROPIC_API_KEY` is set — it's an extra browser-use pass per escalated
+item, so it needs an explicit opt-in:
+
+- unset or `mock` → passes the stage-1 description straight through, no key/network/browser
+- `browser-use` → a real browser-use `Agent` opens the item's own url and
+  summarizes what's actually on the page (needs `ANTHROPIC_API_KEY`, same
+  headless Chromium approach as extraction, same `BROWSER_USE_HEADLESS`
+  toggle and per-item step cap)
+
+```
+# in .env: ANTHROPIC_API_KEY=... and DEEP_DIVE_PROVIDER=browser-use
+python3 pipeline.py
+```
+
+Both implement the `DeepDiveProvider` interface (`dive(raw: RawSignal) ->
+str`), so `generate.py` only ever sees the detail string it returns —
+identical whether that string came from a real page read or was just the
+original blurb. This is why the full-mock pipeline's output is byte-for-byte
+unchanged from before this stage existed.
+
 ### Generate provider selection
 
 `generate.get_generate_provider()` follows the same pattern, reading
 `GENERATE_PROVIDER` from the environment:
 
 - unset → `claude` if `ANTHROPIC_API_KEY` is set, else `mock`
-- `claude` → real call to the Anthropic API (needs `ANTHROPIC_API_KEY`)
+- `claude` → real call to the Anthropic API, using stage 5's enriched detail
+  instead of the raw stage-1 description (needs `ANTHROPIC_API_KEY`)
 - `mock` → the original templated placeholder, no key or network needed
 
 ```
@@ -134,21 +160,17 @@ python3 pipeline.py            # uses ClaudeGenerate
 GENERATE_PROVIDER=mock python3 pipeline.py   # forces the free template
 ```
 
-Note stage 5 (the browser-use "deep dive" on survivors) still doesn't exist
-in this demo — `generate.py` writes straight from the triage-stage
-description, not from an enriched deep-dive read. Real deep-dive detail
-would only make the brief better, not change the plumbing.
-
 ## Making it fully live
 
 1. **Extraction** — done. Set `ANTHROPIC_API_KEY` and `EXTRACT_PROVIDER=browser-use`;
    see "Extract provider selection" above.
 2. **Triage** — done. Set `TYPESAFE_API_KEY` and it calls the real API; see
    "Triage provider selection" above.
-3. **Generation** — done. Set `ANTHROPIC_API_KEY` and it calls Sonnet; see
-   "Generate provider selection" above. Still missing stage 5's browser-use
-   deep dive, so briefs are written from the triage-stage description alone.
-4. **Persistence** — replace the two functions in `store.py` with calls to
+3. **Deep dive** — done. Set `ANTHROPIC_API_KEY` and `DEEP_DIVE_PROVIDER=browser-use`;
+   see "Deep dive provider selection" above.
+4. **Generation** — done. Set `ANTHROPIC_API_KEY` and it calls Sonnet; see
+   "Generate provider selection" above.
+5. **Persistence** — replace the two functions in `store.py` with calls to
    your actual `create_brief` / `get_trending_competitors` tools.
 
 Nothing else needs to change — `gate.py`, `pipeline.py`, and the shapes in

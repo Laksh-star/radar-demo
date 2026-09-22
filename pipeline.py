@@ -27,6 +27,7 @@ from dotenv import load_dotenv
 
 load_dotenv()  # populates os.environ from .env before any get_*_provider() reads it
 
+import deep_dive
 import extract
 import gate
 import generate
@@ -50,14 +51,16 @@ def _noop_emit(event: str, payload: dict) -> None:
 def run_pipeline(
     extract_provider: extract.ExtractionProvider | None = None,
     triage_provider: triage.TriageProvider | None = None,
+    deep_dive_provider: deep_dive.DeepDiveProvider | None = None,
     generate_provider: generate.GenerateProvider | None = None,
     emit: Emit = _noop_emit,
 ) -> dict:
     """Runs all 8 stages once. Emits one event per stage boundary plus one
-    per item at the stages worth watching live (dedup/triage/gate/generate),
-    and returns the final run summary dict."""
+    per item at the stages worth watching live (dedup/triage/gate/deep
+    dive/generate), and returns the final run summary dict."""
     extract_provider = extract_provider or extract.get_extract_provider()
     triage_provider = triage_provider or triage.get_triage_provider()
+    deep_dive_provider = deep_dive_provider or deep_dive.get_deep_dive_provider()
     generate_provider = generate_provider or generate.get_generate_provider()
 
     store.reset()
@@ -67,6 +70,7 @@ def run_pipeline(
         {
             "extract_provider": type(extract_provider).__name__,
             "triage_provider": type(triage_provider).__name__,
+            "deep_dive_provider": type(deep_dive_provider).__name__,
             "generate_provider": type(generate_provider).__name__,
         },
     )
@@ -139,11 +143,22 @@ def run_pipeline(
 
     emit(
         "stage_start",
+        {"stage": "deep_dive", "index": 5, "provider": type(deep_dive_provider).__name__},
+    )
+    dived: list[tuple] = []
+    for item, t in escalated:
+        detail = deep_dive_provider.dive(item)
+        dived.append((item, t, detail))
+        emit("deep_dive_item", {"entity": item.entity, "source": item.source.value, "detail": detail})
+    emit("stage_done", {"stage": "deep_dive", "count": len(dived)})
+
+    emit(
+        "stage_start",
         {"stage": "generate", "index": 6, "provider": type(generate_provider).__name__},
     )
     finished_signals: list[Signal] = []
-    for item, t in escalated:
-        brief = generate_provider.generate(item, t)
+    for item, t, detail in dived:
+        brief = generate_provider.generate(item, t, detail)
         signal = Signal(raw=item, triage=t, status=SignalStatus.ESCALATED, brief=brief)
         finished_signals.append(signal)
         emit("brief_written", {"entity": item.entity, "brief": brief})
@@ -178,7 +193,8 @@ _STAGE_LABELS = {
     "dedup": "stage 3 · dedup (state store — real, dashboard.sqlite)",
     "triage": "stage 4 · triage",
     "gate": "gate · relevance >= 1.0 and confidence >= 0.6",
-    "generate": "stage 5-6 · deep dive (MOCKED) + generate",
+    "deep_dive": "stage 5 · deep dive",
+    "generate": "stage 6 · generate",
     "persist": "stage 7 · persist (create_brief / get_trending_competitors — real, sqlite)",
     "deliver": "stage 8 · deliver",
 }
@@ -202,6 +218,8 @@ def console_emit(event: str, payload: dict) -> None:
             f"  {payload['entity'][:32]:32s}  category={payload['category']:<18s} "
             f"relevance={payload['relevance_score']:.1f} conf={payload['relevance_confidence']:.2f}"
         )
+    elif event == "deep_dive_item":
+        print(f"  DIVE  {payload['entity']}\n    -> {payload['detail']}")
     elif event == "brief_written":
         print(f"  WROTE BRIEF  {payload['entity']}\n    -> {payload['brief']}")
     elif event == "stage_done":
@@ -214,6 +232,8 @@ def console_emit(event: str, payload: dict) -> None:
             print(f"  {payload['new']} new items to triage, {payload['skipped']} skipped")
         elif stage == "gate":
             print(f"  escalate: {payload['escalated']}   discard: {payload['discarded']}")
+        elif stage == "deep_dive":
+            print(f"  enriched {payload['count']} escalated item(s)")
         elif stage == "persist":
             print(f"  wrote {payload['count']} rows to dashboard.sqlite")
         elif stage == "deliver":

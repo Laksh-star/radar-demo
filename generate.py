@@ -1,12 +1,12 @@
 """
 Stage 6 — Generation.
 
-In production this is a full call to a System-2 model (Sonnet), given the
-enriched detail from stage 5's browser-use deep dive, writing the actual
-brief paragraph.
+A full call to a System-2 model (Sonnet), given the enriched detail from
+stage 5's deep dive (deep_dive.py), writing the actual brief paragraph.
 
 `GenerateProvider` is the interface: anything that can turn an escalated
-RawSignal + its TriageResult into a brief paragraph. Two implementations:
+RawSignal + its TriageResult + stage-5's enriched detail into a brief
+paragraph. Two implementations:
 
   - ClaudeGenerate — the real thing. Calls the Anthropic API.
   - MockGenerate    — the original templated placeholder. No key, no
@@ -32,7 +32,7 @@ class GenerateProvider(ABC):
     are interchangeable — pipeline.py only ever sees the string they return."""
 
     @abstractmethod
-    def generate(self, raw: RawSignal, triage: TriageResult) -> str: ...
+    def generate(self, raw: RawSignal, triage: TriageResult, detail: str) -> str: ...
 
 
 class ClaudeGenerate(GenerateProvider):
@@ -44,14 +44,14 @@ class ClaudeGenerate(GenerateProvider):
         self.client = anthropic.Anthropic(api_key=api_key or os.environ["ANTHROPIC_API_KEY"])
         self.model = model
 
-    def generate(self, raw: RawSignal, triage: TriageResult) -> str:
+    def generate(self, raw: RawSignal, triage: TriageResult, detail: str) -> str:
         prompt = (
             "Write one short paragraph (2-3 sentences, no preamble) for a "
             "competitive-intelligence dashboard, explaining why this signal is "
             "worth tracking.\n\n"
             f"Entity: {raw.entity}\n"
             f"Source: {raw.source.value.replace('_', ' ')}\n"
-            f"Raw description: {raw.description.strip()}\n"
+            f"Deep-dive detail: {detail.strip()}\n"
             f"Category: {triage.category.value}\n"
             f"Relevance score: {triage.relevance_score:.1f}/2.0 "
             f"(confidence {triage.relevance_confidence:.0%})\n"
@@ -67,10 +67,10 @@ class ClaudeGenerate(GenerateProvider):
 class MockGenerate(GenerateProvider):
     """Templated placeholder brief. No key, no network."""
 
-    def generate(self, raw: RawSignal, triage: TriageResult) -> str:
+    def generate(self, raw: RawSignal, triage: TriageResult, detail: str) -> str:
         return (
             f"{raw.entity} ({raw.source.value.replace('_', ' ')}) is worth tracking: "
-            f"{raw.description.strip()} Flagged as {triage.category.value} with a "
+            f"{detail.strip()} Flagged as {triage.category.value} with a "
             f"relevance score of {triage.relevance_score:.1f}/2.0 "
             f"(confidence {triage.relevance_confidence:.0%})."
         )

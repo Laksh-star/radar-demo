@@ -140,6 +140,13 @@
       <span class="keybadge" id="typesafe-key-badge">checking key…</span>
     </div>
     <div class="field">
+      <label for="sel-deepdive">Deep dive</label>
+      <select id="sel-deepdive">
+        <option value="mock">Mock (passthrough)</option>
+        <option value="browser-use">browser-use (live)</option>
+      </select>
+    </div>
+    <div class="field">
       <label for="sel-generate">Generate</label>
       <select id="sel-generate">
         <option value="mock">Mock (template)</option>
@@ -173,6 +180,12 @@
   </div>
 
   <div class="panel" style="margin-top:20px;">
+    <h2>Deep dive detail</h2>
+    <p class="sub">Stage 5: a closer read of each escalated item's own page, fed into stage 6's brief below.</p>
+    <div id="deepdive-list"></div>
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
     <h2>Escalated briefs</h2>
     <p class="sub">Only items that survived the gate reach generation — the expensive stage.</p>
     <div id="brief-list"></div>
@@ -201,7 +214,8 @@ const STAGES = [
   {key:"dedup",    index:3, name:"Dedup check"},
   {key:"triage",   index:4, name:"Jev — triage"},
   {key:"gate",     index:"?", name:"Gate: relevance ≥ threshold?", gate:true},
-  {key:"generate", index:6, name:"Deep dive (mocked) + generate"},
+  {key:"deep_dive",index:5, name:"Deep dive"},
+  {key:"generate", index:6, name:"System-2 LLM — generate"},
   {key:"persist",  index:7, name:"Persist"},
   {key:"deliver",  index:8, name:"Deliver"},
 ];
@@ -219,6 +233,7 @@ for (const s of STAGES) {
 const jevTbody = document.getElementById("jev-tbody");
 const finalTbody = document.getElementById("final-tbody");
 const briefList = document.getElementById("brief-list");
+const deepdiveList = document.getElementById("deepdive-list");
 const statusText = document.getElementById("status-text");
 const runBtn = document.getElementById("run-btn");
 
@@ -230,6 +245,7 @@ function resetView() {
   jevTbody.innerHTML = "";
   finalTbody.innerHTML = "";
   briefList.innerHTML = "";
+  deepdiveList.innerHTML = "";
 }
 
 function relBar(score, max) {
@@ -241,7 +257,7 @@ function handleEvent(msg) {
   const { event, payload } = msg;
 
   if (event === "run_started") {
-    statusText.textContent = `running — extract:${payload.extract_provider} triage:${payload.triage_provider} generate:${payload.generate_provider}`;
+    statusText.textContent = `running — extract:${payload.extract_provider} triage:${payload.triage_provider} deep_dive:${payload.deep_dive_provider} generate:${payload.generate_provider}`;
   }
 
   if (event === "stage_start") {
@@ -260,6 +276,7 @@ function handleEvent(msg) {
     if (payload.stage === "dedup") detail.textContent = `${payload.new} new / ${payload.skipped} skipped`;
     if (payload.stage === "triage") detail.textContent = `${payload.count} judged`;
     if (payload.stage === "gate") detail.textContent = `${payload.escalated} escalate / ${payload.discarded} discard`;
+    if (payload.stage === "deep_dive") detail.textContent = `${payload.count} enriched`;
     if (payload.stage === "generate") detail.textContent = `${payload.count} briefs`;
     if (payload.stage === "persist") detail.textContent = `${payload.count} rows`;
     if (payload.stage === "deliver") detail.textContent = `${payload.surfaced} surfaced`;
@@ -275,6 +292,13 @@ function handleEvent(msg) {
       <td class="num">${(payload.is_new_entrant*100).toFixed(0)}%</td>
       <td class="lat">${payload.latency_ms.toFixed(0)} ms</td>`;
     jevTbody.prepend(tr);
+  }
+
+  if (event === "deep_dive_item") {
+    const card = document.createElement("div");
+    card.className = "brief-card";
+    card.innerHTML = `<span class="entity-cell">${payload.entity}<span class="source-sub">${payload.source.replace("_"," ")}</span></span><p>${payload.detail}</p>`;
+    deepdiveList.prepend(card);
   }
 
   if (event === "brief_written") {
@@ -326,6 +350,7 @@ runBtn.addEventListener("click", async () => {
   const body = {
     extract: document.getElementById("sel-extract").value,
     triage: document.getElementById("sel-triage").value,
+    deep_dive: document.getElementById("sel-deepdive").value,
     generate: document.getElementById("sel-generate").value,
   };
   const res = await fetch("/api/run", {
