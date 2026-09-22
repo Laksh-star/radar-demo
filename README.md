@@ -56,6 +56,34 @@ deep-dive detail, the generated briefs, and the final persisted state:
 
 ![Dashboard after a run](screenshots/dashboard-full-run.png)
 
+**A real run** — real Jev triage, real browser-use deep dive, real Claude
+generation (the mock run above only differs in provider choice, not in what
+the UI shows):
+
+![Dashboard with a real Jev + Claude run](screenshots/dashboard-real-jev-run.png)
+
+## Benchmark data
+
+`benchmark/run_benchmark.py` runs the pipeline once against the fixed mock
+extraction batch (so the input set stays constant) with real Jev triage,
+real deep dive, and real Claude generation, and writes per-item data plus
+aggregate stats to `benchmark/stats.json`. `benchmark/trace.txt` is a
+cleaned console trace from one such run. Headline numbers from that run:
+
+- 9 real Jev calls: latency 831.6-927.8ms (mean 884.2ms, median 894.0ms) —
+  consistently sub-second, though above the 70-500ms figure in TypeSafe's
+  own materials (this is round-trip HTTP latency from a local machine, not
+  necessarily model inference time)
+- 2 of 9 items escalated — the gate filtered 78% of items before either
+  expensive stage (deep dive, generation) ran on them
+- 0 Noul overrides in this particular run (the mechanism is verified
+  separately — see `gate.py` and the commit that added it — this run's
+  input just didn't happen to contain a case for it)
+
+```
+python3 benchmark/run_benchmark.py   # needs TYPESAFE_API_KEY + ANTHROPIC_API_KEY
+```
+
 ## What's real vs. mocked
 
 | File | Status | Notes |

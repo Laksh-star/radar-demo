@@ -1,0 +1,142 @@
+Expected output format: _DeepDiveResult
+{
+  "properties": {
+    "detail": {
+      "title": "Detail",
+      "type": "string"
+    }
+  },
+  "required": [
+    "detail"
+  ],
+  "title": "_DeepDiveResult",
+  "type": "object"
+}[0m
+
+action
+  Field required [type=missing, input_value={'thinking': 'I have enou...x": null}}]</action>\n'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/missing) but no fallback_llm configured
+action
+  Field required [type=missing, input_value={'thinking': 'I have enou...x": null}}]</action>\n'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/missing
+
+action
+  Field required [type=missing, input_value={'thinking': 'I have enou...ment."}}}]</action">\n'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/missing) but no fallback_llm configured
+action
+  Field required [type=missing, input_value={'thinking': 'I have enou...ment."}}}]</action">\n'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/missing
+
+action
+  Field required [type=missing, input_value={'thinking': 'I have enou...x": null}}]</action>\n'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/missing) but no fallback_llm configured
+action
+  Field required [type=missing, input_value={'thinking': 'I have enou...x": null}}]</action>\n'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/missing
+
+action
+  Field required [type=missing, input_value={'thinking': 'I have enou...self."}}}]</action">\n'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/missing) but no fallback_llm configured
+action
+  Field required [type=missing, input_value={'thinking': 'I have enou...self."}}}]</action">\n'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/missing
+
+<parameter name="next_goal">Call done with the 2-3 sentence summary based on visible page text.
+📄 [32m Final Result:[0m 
+{"detail": "This is a TypeSafe AI company blog post (dated Sep 15, 2026, tagged 'Company News') by founder Diogo Almeida announcing 'System One Models' and their first release, 'Jev' — a new class of frontier models that take unstructured state as input and output type-safe, structured, probabilistic decisions for software to use directly, rather than generating text; it's described as far faster/more efficient than existing LLMs, unable to hallucinate, and available today in 'early access.' A comparison table gives a concrete pricing detail: input tokens cost $0.042 per million tokens ($42/billion) for Jev, versus $0.20–$10 per million tokens for existing LLMs; no licensing terms are stated. There is no visible sign of community activity such as stars, comments, or a discussion thread — the page is a standalone announcement post with only the author byline and publish date (Sep 15, 2026) as activity indicators."}
+
+
+Expected output format: _DeepDiveResult
+{
+  "properties": {
+    "detail": {
+      "title": "Detail",
+      "type": "string"
+    }
+  },
+  "required": [
+    "detail"
+  ],
+  "title": "_DeepDiveResult",
+  "type": "object"
+}[0m
+
+<parameter name="next_goal">Compose final answer using only visible page text and call done.
+📄 [32m Final Result:[0m 
+{"detail": "Jev, listed on Cloudflare's Workers AI models page as a third-party \"Text Generation\" model by TypeSafe, is described as \"TypeSafe's structured evaluation model. It evaluates one state against typed Noul, Choice, and Score questions and returns calibrated answers with probabilities and confidence,\" and has a 32,000-token context window. For pricing and licensing, the page does not display exact figures but provides links: a \"Terms and License\" link, a \"More information\" link, and a \"Pricing\" row pointing users to \"View pricing in the Cloudflare dashboard\" for actual costs. There is no visible sign of community activity such as stars, comments, or a launch date on this page — it is a standard Cloudflare documentation entry with usage code examples (TypeScript/cURL) and sample requests/responses rather than a discussion or repo page."}
+
+
+
+──────── stage 1 · extract ───────────────────────────────────────────
+  extraction returned 10 raw items across 3 source(s)
+
+──────── stage 2 · validate (pydantic — real) ────────────────────────
+  10 / 10 items passed shape validation
+
+──────── stage 3 · dedup (state store — real, dashboard.sqlite) ──────
+  SKIP  already seen: browser-use (github_trending)
+  9 new items to triage, 1 skipped
+
+──────── stage 4 · triage (TypeSafeTriage, see triage.py) ────────────
+  TypeSafe AI — Jev                 category=agent-framework    relevance=1.1 conf=0.78
+  steel-dev                         category=browser-automation relevance=0.9 conf=0.79
+  Hyperagent                        category=browser-automation relevance=0.9 conf=0.81
+  Cloudflare Workers AI             category=agent-framework    relevance=1.2 conf=0.62
+  NoteDrift                         category=unrelated          relevance=0.2 conf=0.70
+  PlannerPro                        category=unrelated          relevance=0.5 conf=0.19
+  pixel-forge                       category=unrelated          relevance=0.9 conf=0.83
+  n/a                               category=unrelated          relevance=0.0 conf=0.99
+  steel-dev                         category=dev-tooling        relevance=0.7 conf=0.54
+
+──────── gate · relevance >= 1.0 and confidence >= 0.6 ───────────────
+  escalate: 2   discard: 7
+
+──────── stage 5 · deep dive (BrowserUseDeepDive, see deep_dive.py) ──
+  DIVE  TypeSafe AI — Jev
+    -> This is a TypeSafe AI company blog post (dated Sep 15, 2026, tagged 'Company News') by founder Diogo Almeida announcing 'System One Models' and their first release, 'Jev' — a new class of frontier models that take unstructured state as input and output type-safe, structured, probabilistic decisions for software to use directly, rather than generating text; it's described as far faster/more efficient than existing LLMs, unable to hallucinate, and available today in 'early access.' A comparison table gives a concrete pricing detail: input tokens cost $0.042 per million tokens ($42/billion) for Jev, versus $0.20–$10 per million tokens for existing LLMs; no licensing terms are stated. There is no visible sign of community activity such as stars, comments, or a discussion thread — the page is a standalone announcement post with only the author byline and publish date (Sep 15, 2026) as activity indicators.
+  DIVE  Cloudflare Workers AI
+    -> Jev, listed on Cloudflare's Workers AI models page as a third-party "Text Generation" model by TypeSafe, is described as "TypeSafe's structured evaluation model. It evaluates one state against typed Noul, Choice, and Score questions and returns calibrated answers with probabilities and confidence," and has a 32,000-token context window. For pricing and licensing, the page does not display exact figures but provides links: a "Terms and License" link, a "More information" link, and a "Pricing" row pointing users to "View pricing in the Cloudflare dashboard" for actual costs. There is no visible sign of community activity such as stars, comments, or a launch date on this page — it is a standard Cloudflare documentation entry with usage code examples (TypeScript/cURL) and sample requests/responses rather than a discussion or repo page.
+  enriched 2 escalated item(s)
+
+──────── stage 6 · generate (ClaudeGenerate, see generate.py) ────────
+  WROTE BRIEF  TypeSafe AI — Jev
+    -> TypeSafe AI's launch of "Jev" signals a potential shift toward structured, hallucination-free decision models as an alternative to text-generating LLMs, positioning it as an infrastructure play for agentic software rather than chat interfaces. The aggressive pricing claim ($0.042/M tokens vs. $0.20–$10/M for incumbents) suggests a cost-disruption strategy worth monitoring, though the lack of community engagement, benchmarks, or licensing details on Hacker News warrants continued tracking to validate real-world traction versus marketing claims.
+  WROTE BRIEF  Cloudflare Workers AI
+    -> Cloudflare's addition of Jev, a third-party structured-evaluation model, to the Workers AI catalog signals growing platform openness to specialized third-party models beyond generic text generation—worth watching as a bellwether for how Cloudflare curates and monetizes its model marketplace. The model's niche focus (typed Noul/Choice/Score evaluation with calibrated confidence scores) suggests emerging demand for structured-output and agent-evaluation primitives, relevant to competitors building agent-framework tooling. However, with no visible adoption signals (stars, usage data, launch date) and opaque pric
+
+──────── stage 7 · persist (create_brief / get_trending_competitors — real, sqlite) 
+  wrote 9 rows to dashboard.sqlite
+
+──────── stage 8 · deliver ───────────────────────────────────────────
+  2 item(s) surfaced to the dashboard / newsletter queue
+
+──────── run summary ─────────────────────────────────────────────────
+  extracted:  10
+  validated:  10
+  deduped:    9  (1 skipped as already seen)
+  triaged:    9
+  escalated:  2  <- only these got a generation call
+  discarded:  7
+
+
+=== STATS ===
+{
+  "summary": {
+    "extracted": 10,
+    "validated": 10,
+    "deduped": 9,
+    "skipped": 1,
+    "triaged": 9,
+    "escalated": 2,
+    "discarded": 7
+  },
+  "triage_call_count": 9,
+  "latency_ms": {
+    "min": 831.5899999997782,
+    "max": 927.7998750003462,
+    "mean": 884.1992174449034,
+    "median": 894.0115830009745
+  },
+  "noul_override_count": 0,
+  "noul_overrides": []
+}

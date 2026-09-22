@@ -1,0 +1,195 @@
+{
+  "summary": {
+    "extracted": 10,
+    "validated": 10,
+    "deduped": 9,
+    "skipped": 1,
+    "triaged": 9,
+    "escalated": 2,
+    "discarded": 7
+  },
+  "triage_call_count": 9,
+  "latency_ms": {
+    "min": 831.5899999997782,
+    "max": 927.7998750003462,
+    "mean": 884.1992174449034,
+    "median": 894.0115830009745
+  },
+  "noul_override_count": 0,
+  "noul_overrides": [],
+  "triage_items": [
+    {
+      "entity": "TypeSafe AI \u2014 Jev",
+      "source": "hacker_news",
+      "category": "agent-framework",
+      "category_confidence": 0.73,
+      "relevance_score": 1.07,
+      "relevance_confidence": 0.78,
+      "is_new_entrant": 0.4,
+      "latency_ms": 915.901832999225
+    },
+    {
+      "entity": "steel-dev",
+      "source": "github_trending",
+      "category": "browser-automation",
+      "category_confidence": 0.9,
+      "relevance_score": 0.92,
+      "relevance_confidence": 0.79,
+      "is_new_entrant": 0.29,
+      "latency_ms": 831.5899999997782
+    },
+    {
+      "entity": "Hyperagent",
+      "source": "product_hunt",
+      "category": "browser-automation",
+      "category_confidence": 0.98,
+      "relevance_score": 0.9,
+      "relevance_confidence": 0.81,
+      "is_new_entrant": 0.55,
+      "latency_ms": 857.9220000010537
+    },
+    {
+      "entity": "Cloudflare Workers AI",
+      "source": "github_trending",
+      "category": "agent-framework",
+      "category_confidence": 0.65,
+      "relevance_score": 1.21,
+      "relevance_confidence": 0.62,
+      "is_new_entrant": 0.44,
+      "latency_ms": 915.9841250002501
+    },
+    {
+      "entity": "NoteDrift",
+      "source": "hacker_news",
+      "category": "unrelated",
+      "category_confidence": 1.0,
+      "relevance_score": 0.2,
+      "relevance_confidence": 0.7,
+      "is_new_entrant": 0.43,
+      "latency_ms": 916.8202910004766
+    },
+    {
+      "entity": "PlannerPro",
+      "source": "product_hunt",
+      "category": "unrelated",
+      "category_confidence": 1.0,
+      "relevance_score": 0.54,
+      "relevance_confidence": 0.19,
+      "is_new_entrant": 0.4,
+      "latency_ms": 894.0115830009745
+    },
+    {
+      "entity": "pixel-forge",
+      "source": "github_trending",
+      "category": "unrelated",
+      "category_confidence": 0.85,
+      "relevance_score": 0.91,
+      "relevance_confidence": 0.83,
+      "is_new_entrant": 0.44,
+      "latency_ms": 833.8280830012081
+    },
+    {
+      "entity": "n/a",
+      "source": "hacker_news",
+      "category": "unrelated",
+      "category_confidence": 1.0,
+      "relevance_score": 0.01,
+      "relevance_confidence": 0.99,
+      "is_new_entrant": 0.31,
+      "latency_ms": 863.9351670008182
+    },
+    {
+      "entity": "steel-dev",
+      "source": "product_hunt",
+      "category": "dev-tooling",
+      "category_confidence": 0.64,
+      "relevance_score": 0.71,
+      "relevance_confidence": 0.54,
+      "is_new_entrant": 0.13,
+      "latency_ms": 927.7998750003462
+    }
+  ],
+  "gate_items": [
+    {
+      "entity": "TypeSafe AI \u2014 Jev",
+      "source": "hacker_news",
+      "decision": "escalate",
+      "relevance_score": 1.07,
+      "relevance_confidence": 0.78,
+      "is_new_entrant": 0.4,
+      "via_new_entrant": false
+    },
+    {
+      "entity": "steel-dev",
+      "source": "github_trending",
+      "decision": "discard",
+      "relevance_score": 0.92,
+      "relevance_confidence": 0.79,
+      "is_new_entrant": 0.29,
+      "via_new_entrant": false
+    },
+    {
+      "entity": "Hyperagent",
+      "source": "product_hunt",
+      "decision": "discard",
+      "relevance_score": 0.9,
+      "relevance_confidence": 0.81,
+      "is_new_entrant": 0.55,
+      "via_new_entrant": false
+    },
+    {
+      "entity": "Cloudflare Workers AI",
+      "source": "github_trending",
+      "decision": "escalate",
+      "relevance_score": 1.21,
+      "relevance_confidence": 0.62,
+      "is_new_entrant": 0.44,
+      "via_new_entrant": false
+    },
+    {
+      "entity": "NoteDrift",
+      "source": "hacker_news",
+      "decision": "discard",
+      "relevance_score": 0.2,
+      "relevance_confidence": 0.7,
+      "is_new_entrant": 0.43,
+      "via_new_entrant": false
+    },
+    {
+      "entity": "PlannerPro",
+      "source": "product_hunt",
+      "decision": "discard",
+      "relevance_score": 0.54,
+      "relevance_confidence": 0.19,
+      "is_new_entrant": 0.4,
+      "via_new_entrant": false
+    },
+    {
+      "entity": "pixel-forge",
+      "source": "github_trending",
+      "decision": "discard",
+      "relevance_score": 0.91,
+      "relevance_confidence": 0.83,
+      "is_new_entrant": 0.44,
+      "via_new_entrant": false
+    },
+    {
+      "entity": "n/a",
+      "source": "hacker_news",
+      "decision": "discard",
+      "relevance_score": 0.01,
+      "relevance_confidence": 0.99,
+      "is_new_entrant": 0.31,
+      "via_new_entrant": false
+    },
+    {
+      "entity": "steel-dev",
+      "source": "product_hunt",
+      "decision": "discard",
+      "relevance_score": 0.71,
+      "relevance_confidence": 0.54,
+      "is_new_entrant": 0.13,
+      "via_new_entrant": false
+    }
+  ]
+}
