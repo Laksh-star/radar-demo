@@ -4,8 +4,7 @@ There's a specific kind of AI demo I've stopped trusting: the one where every sc
 
 This is what happened, including the parts that didn't go the way the marketing copy implied.
 
-**[Architecture diagram — pull from the earlier artifact]**
-*(claude.ai/artifact/BQAFKvFJLLJ2yFakWy2X2M — the numbered 1–8 stage flow with the gate diamond. This one lives on claude.ai, not in the repo, so grab a screenshot or re-export the SVG yourself before publishing.)*
+![Architecture: extract, validate, dedup, triage, gate, deep dive, generate, persist, deliver](screenshots/architecture-diagram.png)
 
 ## The premise: a competitive-intelligence radar
 
