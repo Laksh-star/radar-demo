@@ -47,6 +47,15 @@ call returns, with its confidence and latency — that panel is the point of
 the dashboard: it's the only stage in the pipeline making a real per-item
 judgment call fast enough to watch happen live.
 
+**Idle, before a run:**
+
+![Dashboard idle](screenshots/dashboard-idle.png)
+
+**After a completed run** — all 8 stages, Jev's live judgments, stage 5's
+deep-dive detail, the generated briefs, and the final persisted state:
+
+![Dashboard after a run](screenshots/dashboard-full-run.png)
+
 ## What's real vs. mocked
 
 | File | Status | Notes |
