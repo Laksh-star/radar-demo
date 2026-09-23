@@ -8,12 +8,28 @@
     "escalated": 2,
     "discarded": 7
   },
+  "model_versions": [
+    "jev-1.13.0"
+  ],
   "triage_call_count": 9,
   "latency_ms": {
-    "min": 831.5899999997782,
-    "max": 927.7998750003462,
-    "mean": 884.1992174449034,
-    "median": 894.0115830009745
+    "min": 384.59954200016,
+    "max": 511.64633300004425,
+    "mean": 456.46804599997876,
+    "median": 451.3558749999902
+  },
+  "tokens": {
+    "input_total": 4006,
+    "output_total": 819,
+    "input_mean": 445.1111111111111,
+    "output_mean": 91,
+    "calls_reporting_usage": 9
+  },
+  "gate_reason_counts": {
+    "below_bar": 3,
+    "high_priority_tail": 1,
+    "relevance": 1,
+    "unrelated_veto": 4
   },
   "noul_override_count": 0,
   "noul_overrides": [],
@@ -22,11 +38,30 @@
       "entity": "TypeSafe AI \u2014 Jev",
       "source": "hacker_news",
       "category": "agent-framework",
-      "category_confidence": 0.73,
+      "category_confidence": 0.72,
       "relevance_score": 1.07,
       "relevance_confidence": 0.78,
       "is_new_entrant": 0.4,
-      "latency_ms": 915.901832999225
+      "latency_ms": 451.3558749999902,
+      "category_probabilities": {
+        "unrelated": 0.12,
+        "browser-automation": 0.0,
+        "dev-tooling": 0.09,
+        "agent-framework": 0.79
+      },
+      "relevance_probabilities": {
+        "0": 0.04,
+        "1": 0.85,
+        "2": 0.11
+      },
+      "relevance_legend": {
+        "0": "Noise",
+        "1": "Worth tracking",
+        "2": "High priority"
+      },
+      "input_tokens": 475,
+      "output_tokens": 90,
+      "model_version": "jev-1.13.0"
     },
     {
       "entity": "steel-dev",
@@ -34,39 +69,115 @@
       "category": "browser-automation",
       "category_confidence": 0.9,
       "relevance_score": 0.92,
-      "relevance_confidence": 0.79,
+      "relevance_confidence": 0.77,
       "is_new_entrant": 0.29,
-      "latency_ms": 831.5899999997782
+      "latency_ms": 495.0755410000056,
+      "category_probabilities": {
+        "unrelated": 0.0,
+        "agent-framework": 0.05,
+        "dev-tooling": 0.02,
+        "browser-automation": 0.93
+      },
+      "relevance_probabilities": {
+        "0": 0.11,
+        "1": 0.85,
+        "2": 0.04
+      },
+      "relevance_legend": {
+        "0": "Noise",
+        "1": "Worth tracking",
+        "2": "High priority"
+      },
+      "input_tokens": 447,
+      "output_tokens": 92,
+      "model_version": "jev-1.13.0"
     },
     {
       "entity": "Hyperagent",
       "source": "product_hunt",
       "category": "browser-automation",
       "category_confidence": 0.98,
-      "relevance_score": 0.9,
-      "relevance_confidence": 0.81,
-      "is_new_entrant": 0.55,
-      "latency_ms": 857.9220000010537
+      "relevance_score": 0.92,
+      "relevance_confidence": 0.82,
+      "is_new_entrant": 0.53,
+      "latency_ms": 506.9142499996815,
+      "category_probabilities": {
+        "unrelated": 0.0,
+        "browser-automation": 0.99,
+        "agent-framework": 0.01,
+        "dev-tooling": 0.0
+      },
+      "relevance_probabilities": {
+        "0": 0.1,
+        "1": 0.88,
+        "2": 0.02
+      },
+      "relevance_legend": {
+        "0": "Noise",
+        "1": "Worth tracking",
+        "2": "High priority"
+      },
+      "input_tokens": 441,
+      "output_tokens": 92,
+      "model_version": "jev-1.13.0"
     },
     {
       "entity": "Cloudflare Workers AI",
       "source": "github_trending",
       "category": "agent-framework",
       "category_confidence": 0.65,
-      "relevance_score": 1.21,
-      "relevance_confidence": 0.62,
-      "is_new_entrant": 0.44,
-      "latency_ms": 915.9841250002501
+      "relevance_score": 1.27,
+      "relevance_confidence": 0.52,
+      "is_new_entrant": 0.43,
+      "latency_ms": 511.64633300004425,
+      "category_probabilities": {
+        "unrelated": 0.03,
+        "browser-automation": 0.0,
+        "agent-framework": 0.73,
+        "dev-tooling": 0.24
+      },
+      "relevance_probabilities": {
+        "0": 0.02,
+        "1": 0.68,
+        "2": 0.3
+      },
+      "relevance_legend": {
+        "0": "Noise",
+        "1": "Worth tracking",
+        "2": "High priority"
+      },
+      "input_tokens": 449,
+      "output_tokens": 90,
+      "model_version": "jev-1.13.0"
     },
     {
       "entity": "NoteDrift",
       "source": "hacker_news",
       "category": "unrelated",
       "category_confidence": 1.0,
-      "relevance_score": 0.2,
-      "relevance_confidence": 0.7,
-      "is_new_entrant": 0.43,
-      "latency_ms": 916.8202910004766
+      "relevance_score": 0.19,
+      "relevance_confidence": 0.71,
+      "is_new_entrant": 0.45,
+      "latency_ms": 438.2701660001658,
+      "category_probabilities": {
+        "unrelated": 1.0,
+        "browser-automation": 0.0,
+        "agent-framework": 0.0,
+        "dev-tooling": 0.0
+      },
+      "relevance_probabilities": {
+        "0": 0.81,
+        "1": 0.19,
+        "2": 0.0
+      },
+      "relevance_legend": {
+        "0": "Noise",
+        "1": "Worth tracking",
+        "2": "High priority"
+      },
+      "input_tokens": 437,
+      "output_tokens": 91,
+      "model_version": "jev-1.13.0"
     },
     {
       "entity": "PlannerPro",
@@ -74,19 +185,57 @@
       "category": "unrelated",
       "category_confidence": 1.0,
       "relevance_score": 0.54,
-      "relevance_confidence": 0.19,
-      "is_new_entrant": 0.4,
-      "latency_ms": 894.0115830009745
+      "relevance_confidence": 0.18,
+      "is_new_entrant": 0.42,
+      "latency_ms": 393.2604159999755,
+      "category_probabilities": {
+        "agent-framework": 0.0,
+        "dev-tooling": 0.0,
+        "browser-automation": 0.0,
+        "unrelated": 1.0
+      },
+      "relevance_probabilities": {
+        "0": 0.49,
+        "1": 0.47,
+        "2": 0.04
+      },
+      "relevance_legend": {
+        "0": "Noise",
+        "1": "Worth tracking",
+        "2": "High priority"
+      },
+      "input_tokens": 436,
+      "output_tokens": 91,
+      "model_version": "jev-1.13.0"
     },
     {
       "entity": "pixel-forge",
       "source": "github_trending",
       "category": "unrelated",
-      "category_confidence": 0.85,
-      "relevance_score": 0.91,
-      "relevance_confidence": 0.83,
-      "is_new_entrant": 0.44,
-      "latency_ms": 833.8280830012081
+      "category_confidence": 0.87,
+      "relevance_score": 0.89,
+      "relevance_confidence": 0.8,
+      "is_new_entrant": 0.45,
+      "latency_ms": 384.59954200016,
+      "category_probabilities": {
+        "unrelated": 0.9,
+        "dev-tooling": 0.1,
+        "agent-framework": 0.0,
+        "browser-automation": 0.0
+      },
+      "relevance_probabilities": {
+        "0": 0.12,
+        "1": 0.87,
+        "2": 0.01
+      },
+      "relevance_legend": {
+        "0": "Noise",
+        "1": "Worth tracking",
+        "2": "High priority"
+      },
+      "input_tokens": 437,
+      "output_tokens": 91,
+      "model_version": "jev-1.13.0"
     },
     {
       "entity": "n/a",
@@ -95,18 +244,56 @@
       "category_confidence": 1.0,
       "relevance_score": 0.01,
       "relevance_confidence": 0.99,
-      "is_new_entrant": 0.31,
-      "latency_ms": 863.9351670008182
+      "is_new_entrant": 0.3,
+      "latency_ms": 481.88283299987233,
+      "category_probabilities": {
+        "browser-automation": 0.0,
+        "unrelated": 1.0,
+        "agent-framework": 0.0,
+        "dev-tooling": 0.0
+      },
+      "relevance_probabilities": {
+        "0": 0.99,
+        "1": 0.01,
+        "2": 0.0
+      },
+      "relevance_legend": {
+        "0": "Noise",
+        "1": "Worth tracking",
+        "2": "High priority"
+      },
+      "input_tokens": 430,
+      "output_tokens": 91,
+      "model_version": "jev-1.13.0"
     },
     {
       "entity": "steel-dev",
       "source": "product_hunt",
       "category": "dev-tooling",
-      "category_confidence": 0.64,
-      "relevance_score": 0.71,
-      "relevance_confidence": 0.54,
+      "category_confidence": 0.73,
+      "relevance_score": 0.78,
+      "relevance_confidence": 0.62,
       "is_new_entrant": 0.13,
-      "latency_ms": 927.7998750003462
+      "latency_ms": 445.20745799991346,
+      "category_probabilities": {
+        "agent-framework": 0.01,
+        "browser-automation": 0.0,
+        "dev-tooling": 0.8,
+        "unrelated": 0.19
+      },
+      "relevance_probabilities": {
+        "0": 0.24,
+        "1": 0.74,
+        "2": 0.02
+      },
+      "relevance_legend": {
+        "0": "Noise",
+        "1": "Worth tracking",
+        "2": "High priority"
+      },
+      "input_tokens": 454,
+      "output_tokens": 91,
+      "model_version": "jev-1.13.0"
     }
   ],
   "gate_items": [
@@ -117,61 +304,89 @@
       "relevance_score": 1.07,
       "relevance_confidence": 0.78,
       "is_new_entrant": 0.4,
-      "via_new_entrant": false
+      "via_new_entrant": false,
+      "reason": "relevance",
+      "detail": "relevance 1.07 clears the 1.00 bar",
+      "unrelated_probability": 0.12,
+      "high_priority_probability": 0.11
     },
     {
       "entity": "steel-dev",
       "source": "github_trending",
       "decision": "discard",
       "relevance_score": 0.92,
-      "relevance_confidence": 0.79,
+      "relevance_confidence": 0.77,
       "is_new_entrant": 0.29,
-      "via_new_entrant": false
+      "via_new_entrant": false,
+      "reason": "below_bar",
+      "detail": "relevance 0.92 is under the 1.00 bar and Noul 0.29 doesn't mark it as new",
+      "unrelated_probability": 0.0,
+      "high_priority_probability": 0.04
     },
     {
       "entity": "Hyperagent",
       "source": "product_hunt",
       "decision": "discard",
-      "relevance_score": 0.9,
-      "relevance_confidence": 0.81,
-      "is_new_entrant": 0.55,
-      "via_new_entrant": false
+      "relevance_score": 0.92,
+      "relevance_confidence": 0.82,
+      "is_new_entrant": 0.53,
+      "via_new_entrant": false,
+      "reason": "below_bar",
+      "detail": "relevance 0.92 is under the 1.00 bar and Noul 0.53 doesn't mark it as new",
+      "unrelated_probability": 0.0,
+      "high_priority_probability": 0.02
     },
     {
       "entity": "Cloudflare Workers AI",
       "source": "github_trending",
       "decision": "escalate",
-      "relevance_score": 1.21,
-      "relevance_confidence": 0.62,
-      "is_new_entrant": 0.44,
-      "via_new_entrant": false
+      "relevance_score": 1.27,
+      "relevance_confidence": 0.52,
+      "is_new_entrant": 0.43,
+      "via_new_entrant": false,
+      "reason": "high_priority_tail",
+      "detail": "Score's mean is 1.27 at 52% confidence, but 30% of its belief sits on the top level \u2014 over the 25% tail bar. An expectation hides that; the distribution doesn't",
+      "unrelated_probability": 0.03,
+      "high_priority_probability": 0.3
     },
     {
       "entity": "NoteDrift",
       "source": "hacker_news",
       "decision": "discard",
-      "relevance_score": 0.2,
-      "relevance_confidence": 0.7,
-      "is_new_entrant": 0.43,
-      "via_new_entrant": false
+      "relevance_score": 0.19,
+      "relevance_confidence": 0.71,
+      "is_new_entrant": 0.45,
+      "via_new_entrant": false,
+      "reason": "unrelated_veto",
+      "detail": "Choice put 100% of its belief on 'unrelated' \u2014 over the 50% veto \u2014 so the category question disagrees with the relevance score of 0.19, and the gate sides with it",
+      "unrelated_probability": 1.0,
+      "high_priority_probability": 0.0
     },
     {
       "entity": "PlannerPro",
       "source": "product_hunt",
       "decision": "discard",
       "relevance_score": 0.54,
-      "relevance_confidence": 0.19,
-      "is_new_entrant": 0.4,
-      "via_new_entrant": false
+      "relevance_confidence": 0.18,
+      "is_new_entrant": 0.42,
+      "via_new_entrant": false,
+      "reason": "unrelated_veto",
+      "detail": "Choice put 100% of its belief on 'unrelated' \u2014 over the 50% veto \u2014 so the category question disagrees with the relevance score of 0.54, and the gate sides with it",
+      "unrelated_probability": 1.0,
+      "high_priority_probability": 0.04
     },
     {
       "entity": "pixel-forge",
       "source": "github_trending",
       "decision": "discard",
-      "relevance_score": 0.91,
-      "relevance_confidence": 0.83,
-      "is_new_entrant": 0.44,
-      "via_new_entrant": false
+      "relevance_score": 0.89,
+      "relevance_confidence": 0.8,
+      "is_new_entrant": 0.45,
+      "via_new_entrant": false,
+      "reason": "unrelated_veto",
+      "detail": "Choice put 90% of its belief on 'unrelated' \u2014 over the 50% veto \u2014 so the category question disagrees with the relevance score of 0.89, and the gate sides with it",
+      "unrelated_probability": 0.9,
+      "high_priority_probability": 0.01
     },
     {
       "entity": "n/a",
@@ -179,17 +394,25 @@
       "decision": "discard",
       "relevance_score": 0.01,
       "relevance_confidence": 0.99,
-      "is_new_entrant": 0.31,
-      "via_new_entrant": false
+      "is_new_entrant": 0.3,
+      "via_new_entrant": false,
+      "reason": "unrelated_veto",
+      "detail": "Choice put 100% of its belief on 'unrelated' \u2014 over the 50% veto \u2014 so the category question disagrees with the relevance score of 0.01, and the gate sides with it",
+      "unrelated_probability": 1.0,
+      "high_priority_probability": 0.0
     },
     {
       "entity": "steel-dev",
       "source": "product_hunt",
       "decision": "discard",
-      "relevance_score": 0.71,
-      "relevance_confidence": 0.54,
+      "relevance_score": 0.78,
+      "relevance_confidence": 0.62,
       "is_new_entrant": 0.13,
-      "via_new_entrant": false
+      "via_new_entrant": false,
+      "reason": "below_bar",
+      "detail": "relevance 0.78 is under the 1.00 bar and Noul 0.13 doesn't mark it as new",
+      "unrelated_probability": 0.19,
+      "high_priority_probability": 0.02
     }
   ]
 }

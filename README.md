@@ -132,15 +132,27 @@ measured rather than just what it asked for. (The committed `stats.json`
 predates those two fields; the next run regenerates it with them.) `benchmark/trace.txt` is a
 cleaned console trace from one such run. Headline numbers from that run:
 
-- 9 real Jev calls: latency 831.6-927.8ms (mean 884.2ms, median 894.0ms) —
-  consistently sub-second, though above the 70-500ms figure in TypeSafe's
-  own materials (this is round-trip HTTP latency from a local machine, not
-  necessarily model inference time)
-- 2 of 9 items escalated — the gate filtered 78% of items before either
-  expensive stage (deep dive, generation) ran on them
-- 0 Noul overrides in this particular run (the mechanism is verified
-  separately — see `gate.py` and the commit that added it — this run's
-  input just didn't happen to contain a case for it)
+- 9 real Jev calls against **jev-1.13.0**: latency 384.6-511.6ms (mean
+  456.5ms, median 451.4ms) — essentially inside the 70-500ms band in
+  TypeSafe's own materials, with only the slowest call 2% over. An earlier
+  run of this same benchmark measured 831.6-927.8ms on the same machine
+  against the same inputs. What changed between them isn't established: that
+  run didn't record the model build, so it can't even be ruled in or out.
+  Time of day, network path and build are all plausible, and this is
+  round-trip HTTP latency from a local machine either way, not model
+  inference time.
+- 4,006 input / 819 output tokens across the 9 calls (445 / 91 per call)
+- 2 of 9 items escalated — the gate filtered 78% before either expensive
+  stage (deep dive, generation) ran on them
+- **Which rule decided**: 4 discards by the unrelated veto, 3 below the
+  relevance bar, 1 escalation on the bar, and 1 on the high-priority tail.
+  That last one is Cloudflare Workers AI at relevance 1.27 with 52%
+  confidence: under the gate as it stood before the distributions were
+  wired in, the confidence floor would have discarded it despite the high
+  score. The tail rule caught it because 30% of Score's belief sat on "high
+  priority"
+- 0 Noul overrides in this run — the mechanism has its own boundary tests in
+  `test_gate.py`; this run's input just didn't contain a case for it
 
 ```
 python3 benchmark/run_benchmark.py   # needs TYPESAFE_API_KEY + ANTHROPIC_API_KEY
