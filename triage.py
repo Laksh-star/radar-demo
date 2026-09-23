@@ -5,6 +5,13 @@ One call per item to Jev (TypeSafe AI's System One model), asking three
 questions in parallel — category (Choice), relevance (Score), is_new_entrant
 (Noul) — and getting a confidence-scored judgment back.
 
+The response carries more than the three answers: a probability distribution
+behind each Choice and Score, the legend the levels were scored against,
+token usage, and the resolved model build. This used to be parsed off and
+dropped; TriageResult now keeps all of it, so the distributions are
+available to anything that wants to look at *how* certain the model was
+rather than only what it picked.
+
 `TriageProvider` is the interface: anything that can turn a RawSignal into a
 TriageResult. Two implementations ship here:
 
@@ -84,13 +91,24 @@ class TypeSafeTriage(TriageProvider):
             timeout=self.timeout,
         )
         resp.raise_for_status()
-        a = resp.json()["answers"]
+        body = resp.json()
+        a = body["answers"]
+        usage = body.get("usage") or {}
         return TriageResult(
             category=a["category"]["choice"],
             category_confidence=a["category"]["confidence"],
             relevance_score=a["relevance"]["score"],
             relevance_confidence=a["relevance"]["confidence"],
             is_new_entrant=a["is_new_entrant"]["noul"],
+            # everything below is returned on every call whether you read it
+            # or not; .get() throughout so an API that stops sending one of
+            # them degrades to None instead of breaking the pipeline
+            category_probabilities=a["category"].get("probabilities"),
+            relevance_probabilities=a["relevance"].get("probabilities"),
+            relevance_legend=a["relevance"].get("legend"),
+            input_tokens=usage.get("input_tokens"),
+            output_tokens=usage.get("output_tokens"),
+            model_version=body.get("model"),
         )
 
 
@@ -172,6 +190,12 @@ class MockTriage(TriageProvider):
             relevance_score=relevance_score,
             relevance_confidence=relevance_confidence,
             is_new_entrant=is_new_entrant,
+            # deliberately no probabilities, legend or usage: a keyword
+            # heuristic has no distribution to report, and faking a
+            # confident-looking one would misrepresent what a mock knows.
+            # Consumers must handle None — which is also what makes the
+            # difference visible when you switch providers.
+            model_version="mock-keyword-heuristic",
         )
 
 

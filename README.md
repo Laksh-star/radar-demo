@@ -80,7 +80,12 @@ Four things you can do with your hands:
 
 1. **Ask Jev something** — tap one of the sample signals or type your own
    headline, and watch Choice / Score / Noul land together with their
-   confidences and the measured round-trip latency.
+   confidences, the **full probability distribution behind each answer**,
+   the token usage, and the exact model build that answered
+   (`jev-1.13.0`, not the `jev-latest` alias the request asks for). The
+   distributions are the part worth staring at: a 0.99/0.01 split and a
+   0.51/0.49 split both render as one confident-looking label until you see
+   the shape behind them.
 2. **Move the gate** — four sliders for the thresholds in `gate.py`
    (they're loaded from it at page load, not hardcoded in the page). The
    judgment stays fixed; no new calls are made. Only the bars move, and the
@@ -90,9 +95,13 @@ Four things you can do with your hands:
    time — the mechanism `gate.py` describes, made tactile.
 3. **Race a full LLM** — the same three questions go to Jev and to Sonnet at
    the same moment, asked for identical JSON. Both lanes show their answer,
-   their latency, and (for the LLM) the tokens it burned writing that JSON
-   out token by token. Measured runs here came in at 3.8–5.3× faster for the
-   same verdict.
+   their latency and their token usage. Measured runs came in at 3.8–5.3×
+   faster for the same verdict. Worth noting honestly: Jev is not
+   automatically the cheaper *in tokens* — one measured pair was Jev 441
+   in / 92 out against the LLM's 239 in / 63 out, because the question
+   criteria travel with every Jev call. The two price tokens very
+   differently, so the page calls that a usage comparison, not a cost one.
+   Latency is the measured claim here; cost isn't, and the page says so.
 4. **Fire a batch** — all 10 sample signals judged concurrently (8 at a
    time), each tile flipping as its own call returns, ending in the funnel:
    how many came in, how many escalated, how many were dropped before
@@ -113,7 +122,10 @@ without one.
 `benchmark/run_benchmark.py` runs the pipeline once against the fixed mock
 extraction batch (so the input set stays constant) with real Jev triage,
 real deep dive, and real Claude generation, and writes per-item data plus
-aggregate stats to `benchmark/stats.json`. `benchmark/trace.txt` is a
+aggregate stats to `benchmark/stats.json` — including the resolved model
+builds that answered and total token usage, so a stats file can say what it
+measured rather than just what it asked for. (The committed `stats.json`
+predates those two fields; the next run regenerates it with them.) `benchmark/trace.txt` is a
 cleaned console trace from one such run. Headline numbers from that run:
 
 - 9 real Jev calls: latency 831.6-927.8ms (mean 884.2ms, median 894.0ms) —
@@ -136,7 +148,7 @@ python3 benchmark/run_benchmark.py   # needs TYPESAFE_API_KEY + ANTHROPIC_API_KE
 |---|---|---|
 | `models.py` | real | the `RawSignal` / `TriageResult` / `Signal` Pydantic contracts |
 | `extract.py` | real | pluggable `ExtractionProvider` interface — `BrowserUseExtract` runs a real browser-use `Agent` against Hacker News / GitHub Trending (Product Hunt excluded, see below), `MockExtract` returns the canned `sample_sources.py` batch (all 3 sources) |
-| `triage.py` | real | pluggable `TriageProvider` interface — `TypeSafeTriage` makes the real `/v1/systemone` call, `MockTriage` is the original keyword heuristic kept as a no-key fallback |
+| `triage.py` | real | pluggable `TriageProvider` interface — `TypeSafeTriage` makes the real `/v1/systemone` call and keeps the *whole* response (answers, per-option and per-level probability distributions, level legend, token usage, resolved model build), `MockTriage` is the original keyword heuristic kept as a no-key fallback |
 | `gate.py` | real | threshold logic using all three of Jev's judgments — a confident new entrant (Noul) clears the gate at a lower relevance bar than a repost or known name would; see below |
 | `store.py` | real | SQLite-backed dedup table + persistence — stands in for your `create_brief` / `get_trending_competitors` tools |
 | `deep_dive.py` | real | pluggable `DeepDiveProvider` interface — `BrowserUseDeepDive` opens each escalated item's own url and summarizes what's actually there, `MockDeepDive` passes the stage-1 description straight through |
@@ -267,6 +279,40 @@ python3 pipeline.py            # uses ClaudeGenerate
 
 GENERATE_PROVIDER=mock python3 pipeline.py   # forces the free template
 ```
+
+## What of Jev this demo exercises — and what it doesn't
+
+Checked against TypeSafe's [docs index](https://docs.typesafe.ai/llms.txt)
+and a raw probe of the live API, not from memory. ✅ = exercised, ⚠️ =
+partly, ❌ = not.
+
+| Jev feature | Exercised | Where, or why not |
+|---|:--:|---|
+| **Choice** — pick from options | ✅ | category, everywhere |
+| **Score** — rate against ordered levels | ⚠️ | the number drives the gate, but the gate is binary — "Worth tracking" and "High priority" still behave identically |
+| **Noul** — probability a statement is true | ✅ | `gate.py` escalates confident new entrants at a lower bar; the playground makes the override fire on a slider drag |
+| Confidence, separate from the answer | ✅ | `gate.py`'s confidence floor — one sample item scores 1.23 relevance and is still discarded at 0.59 confidence |
+| Per-option probabilities (Choice) | ✅ | captured in `TriageResult`, drawn in the playground |
+| Per-level probabilities + legend (Score) | ✅ | same |
+| `usage` token counts | ✅ | per call in the playground, aggregated in the benchmark |
+| Resolved model build | ✅ | `jev-1.13.0` recorded rather than the `jev-latest` alias requested |
+| Several questions per call, evaluated in parallel | ✅ | 3 per call — the efficiency the architecture is built on |
+| Confidence-gated routing | ✅ | literally what `gate.py` is |
+| Cheap classifier in front of a generative model | ✅ | the demo's whole thesis — 64–91% filtered before deep dive or generation |
+| Structured JSON for criteria | ⚠️ | Choice takes a criteria dict and Score a level list, but `instructions` are plain strings |
+| State structuring | ⚠️ | only `raw.description` is sent; the title, source, url and date are held right there and never reach the model |
+| Speculative fan-out | ❌ | extra speculative questions in the same call — not attempted |
+| Composite scoring | ❌ | one relevance question does all the judging |
+| Self-consistency (Noul / Choice variants) | ❌ | not attempted |
+| Re-ranking, semantic search, RAG passage classification, citation verification, guardrails, function calling, extraction, hierarchical classification | ❌ | 16+ cookbook patterns, all different use cases from this one |
+| Sub-second latency (70–500ms claimed) | ✅ | measured 400–930ms across runs — above the claimed ceiling, and said so plainly |
+| Calibration of those probabilities | ❌ | now *visible* since the distributions are captured, but nothing here tests whether they're calibrated |
+| Official Python / JS SDKs | ❌ | raw `httpx` — no retries, no async client |
+| Cloudflare Workers AI distribution | ❌ | appears in `sample_sources.py` as a signal, never as a call path |
+
+The short version: the judgment layer is thoroughly exercised, the
+distributions are now captured rather than discarded, and the composite /
+self-consistency / fan-out patterns are the largest untouched surface.
 
 ## Making it fully live
 

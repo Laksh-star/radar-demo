@@ -78,12 +78,22 @@ def _as_raw_signal(title: str, description: str) -> RawSignal:
 
 
 def _judgment_dict(result: TriageResult) -> dict:
+    """The three answers, plus everything the call returned alongside them —
+    the distributions behind Choice and Score, the token usage, and the build
+    that answered. A provider with none of that (MockTriage) sends None and
+    the page says so rather than drawing an invented distribution."""
     return {
         "category": result.category.value,
         "category_confidence": result.category_confidence,
         "relevance_score": result.relevance_score,
         "relevance_confidence": result.relevance_confidence,
         "is_new_entrant": result.is_new_entrant,
+        "category_probabilities": result.category_probabilities,
+        "relevance_probabilities": result.relevance_probabilities,
+        "relevance_legend": result.relevance_legend,
+        "input_tokens": result.input_tokens,
+        "output_tokens": result.output_tokens,
+        "model_version": result.model_version,
     }
 
 

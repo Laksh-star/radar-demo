@@ -96,6 +96,19 @@
     font:600 9px 'IBM Plex Mono',monospace;color:var(--muted);white-space:nowrap;letter-spacing:.03em;}
   .tiers{display:flex;justify-content:space-between;margin-top:20px;font:9.5px 'IBM Plex Mono',monospace;color:var(--muted);letter-spacing:.03em;text-transform:uppercase;}
 
+  .dist{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px;}
+  .dist .dhead{font:9.5px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;}
+  .drow{display:grid;grid-template-columns:minmax(0,1fr) 46px;gap:4px 8px;align-items:center;font-size:11px;}
+  .drow .dlabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);}
+  .drow .dpct{font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums;}
+  .drow .dbar{grid-column:1/-1;height:5px;border-radius:3px;background:var(--code-bg);overflow:hidden;}
+  .drow .dbar > span{display:block;height:100%;background:var(--muted);opacity:.45;transition:width .5s cubic-bezier(.2,.8,.2,1);}
+  .drow.top .dlabel{color:var(--ink);font-weight:600;}
+  .drow.top .dpct{color:var(--accent);font-weight:600;}
+  .drow.top .dbar > span{background:var(--accent);opacity:1;}
+  .dnone{font-size:11px;color:var(--muted);line-height:1.45;}
+  .usage{margin-top:10px;font:10.5px 'IBM Plex Mono',monospace;color:var(--muted);}
+
   .latency-strip{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:18px;padding:13px 15px;border-radius:10px;background:var(--accent-soft);}
   .latency-strip .big{font:600 22px 'IBM Plex Mono',monospace;color:var(--accent);font-variant-numeric:tabular-nums;}
   .latency-strip .txt{font-size:12.5px;color:var(--muted);line-height:1.5;}
@@ -191,7 +204,9 @@
     <p class="sec-sub">
       One call, three questions, answered together: <b>Choice</b> (which bucket),
       <b>Score</b> (how significant, 0–2), <b>Noul</b> (is this genuinely new, or a repost).
-      Tap a real signal from the demo's sample set, or write your own headline.
+      Each answer also carries the full probability distribution behind it — not just what the model
+      picked, but how the rest of its belief was spread — plus the token usage and the exact model build
+      that answered. Tap a real signal from the demo's sample set, or write your own headline.
     </p>
     <div class="chips" id="chips"></div>
     <textarea id="input" placeholder="e.g. A startup launched a hosted browser-agent runtime today with a free tier…"></textarea>
@@ -209,6 +224,7 @@
           <div class="qwhat">which competitive bucket</div>
           <div class="jval small" id="cat-val">—</div>
           <div class="conf" id="cat-conf">confidence —</div>
+          <div class="dist" id="cat-dist"></div>
         </div>
         <div class="jcard">
           <div class="qname">Score</div>
@@ -220,6 +236,7 @@
             <div class="mark" id="score-mark" data-label="GATE" style="left:50%"></div>
           </div>
           <div class="tiers"><span>noise</span><span>worth tracking</span><span>high priority</span></div>
+          <div class="dist" id="score-dist"></div>
         </div>
         <div class="jcard">
           <div class="qname">Noul</div>
@@ -236,6 +253,7 @@
       <div class="latency-strip">
         <span class="big" id="lat-val">—</span>
         <span class="txt" id="lat-txt">round-trip, from this machine</span>
+        <span class="usage" id="usage-val"></span>
       </div>
     </div>
   </section>
@@ -342,6 +360,7 @@
     <div class="stat"><span class="k">mean latency</span><span class="v accent" id="st-lat">—</span></div>
     <div class="stat"><span class="k">filtered out</span><span class="v" id="st-filtered">—</span></div>
     <div class="stat"><span class="k">LLM calls avoided</span><span class="v keep" id="st-avoided">0</span></div>
+    <div class="stat"><span class="k">Jev tokens</span><span class="v" id="st-tokens">—</span></div>
     <div class="stat"><span class="k">LLM time saved</span><span class="v keep" id="st-saved">—</span></div>
     <p class="hint" id="st-hint">Time saved appears once you've run a race — it uses your own measured LLM latency, not a claimed one.</p>
   </div>
@@ -422,6 +441,24 @@ function renderJudgment(){
   ring.style.setProperty("--p", j.category_confidence*100);
   ring.dataset.label = pct(j.category_confidence);
 
+  renderDist($("cat-dist"), "probability per option",
+    j.category_probabilities
+      ? Object.entries(j.category_probabilities)
+          .map(([k,v]) => [CAT_LABEL[k] || k, v])
+          .sort((a,b) => b[1]-a[1])
+      : null);
+
+  renderDist($("score-dist"), "probability per level",
+    j.relevance_probabilities
+      ? Object.entries(j.relevance_probabilities)
+          .sort((a,b) => Number(a[0])-Number(b[0]))
+          .map(([k,v]) => [(j.relevance_legend && j.relevance_legend[k]) || ("level " + k), v])
+      : null);
+
+  $("usage-val").textContent = j.input_tokens != null
+    ? `${j.model_version} · ${j.input_tokens} in / ${j.output_tokens} out tokens`
+    : (j.model_version || "");
+
   $("score-val").textContent = fmt(j.relevance_score) + " / 2.0";
   $("score-conf").textContent = "confidence " + pct(j.relevance_confidence);
   $("score-fill").style.width = (j.relevance_score/2*100) + "%";
@@ -434,6 +471,25 @@ function renderJudgment(){
     ? `round-trip from this machine. Your measured LLM lane took <b>${Math.round(llmReference)} ms</b> for the same question.`
     : `round-trip from this machine — not model inference time. Race it in section 03 to see what the same question costs a full LLM.`;
   renderVerdict();
+}
+
+/* A distribution the API returns on every call and this demo used to drop.
+   null means the provider genuinely has none (the keyword mock) — say so
+   rather than drawing a fake one. */
+function renderDist(el, heading, entries){
+  if (!entries){
+    el.innerHTML = `<div class="dhead">${heading}</div>
+      <div class="dnone">Not available — the keyword mock has no distribution to report.
+      Set TYPESAFE_API_KEY to see the real one.</div>`;
+    return;
+  }
+  const top = Math.max(...entries.map(e => e[1]));
+  el.innerHTML = `<div class="dhead">${heading}</div>` + entries.map(([label, p]) => `
+    <div class="drow ${p === top ? "top" : ""}">
+      <span class="dlabel">${label}</span>
+      <span class="dpct">${(p*100).toFixed(0)}%</span>
+      <span class="dbar"><span style="width:${p*100}%"></span></span>
+    </div>`).join("");
 }
 
 function renderVerdict(){
@@ -479,6 +535,11 @@ function renderLedger(){
   $("st-lat").textContent = Math.round(meanLat) + " ms";
   $("st-filtered").textContent = Math.round(avoided/n*100) + "%";
   $("st-avoided").textContent = avoided;
+
+  const withUsage = session.filter(i => i.judgment.input_tokens != null);
+  $("st-tokens").textContent = withUsage.length
+    ? `${withUsage.reduce((s,i)=>s+i.judgment.input_tokens,0)} / ${withUsage.reduce((s,i)=>s+i.judgment.output_tokens,0)}`
+    : "—";
   if (llmReference){
     const saved = (avoided * (llmReference - meanLat))/1000;
     $("st-saved").textContent = saved.toFixed(1) + " s";
@@ -554,8 +615,10 @@ async function race(){
         `<b>${x.toFixed(1)}× faster</b> for the same question, and they ${agree
           ? `<b>agreed on the category</b> (${CAT_LABEL[jev.judgment.category]||jev.judgment.category})`
           : `<b>disagreed</b> — Jev said ${CAT_LABEL[jev.judgment.category]}, the LLM said ${CAT_LABEL[llm.judgment.category]||llm.judgment.category}`}.
-         The LLM also burned ${llm.output_tokens} output tokens writing JSON; Jev returns the structure natively,
-         which is the whole difference between generating an answer and predicting one.`;
+         Tokens for the identical question — Jev <b>${jev.judgment.input_tokens ?? "n/a"} in / ${jev.judgment.output_tokens ?? "n/a"} out</b>,
+         the LLM <b>${llm.input_tokens} in / ${llm.output_tokens} out</b>. Both report usage, and the two price
+         tokens differently, so read that as a usage comparison rather than a cost one — the latency gap is the
+         measured claim here.`;
       $("race-note").classList.remove("hidden");
       renderJudgment();
     }
@@ -643,6 +706,8 @@ $("clear-btn").addEventListener("click", () => {
   $("result").classList.add("hidden"); $("lanes").classList.add("hidden");
   $("race-note").classList.add("hidden"); $("funnel").classList.add("hidden");
   $("dots").innerHTML = ""; $("input").value = "";
+  $("usage-val").textContent = ""; $("cat-dist").innerHTML = ""; $("score-dist").innerHTML = "";
+  $("st-tokens").textContent = "—";
   $("verdict-pill").textContent = "NO ITEM YET"; $("verdict-pill").className = "pill-big discard";
   $("verdict-why").textContent = "Ask Jev something above and this will explain, in words, exactly why it lives or dies.";
   $("st-saved").textContent = "—";

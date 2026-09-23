@@ -1,9 +1,10 @@
 """
 Runs the pipeline once against the reproducible mock extraction batch, with
 real Jev triage, real deep dive, and real Claude generation, and writes the
-per-item data plus aggregate stats (latency, escalation ratio, Noul override
-count) to stats.json. Needs TYPESAFE_API_KEY and ANTHROPIC_API_KEY (in .env
-or the environment) — this spends real API calls.
+per-item data plus aggregate stats (latency, token usage, resolved model
+build, escalation ratio, Noul override count) to stats.json. Needs
+TYPESAFE_API_KEY and ANTHROPIC_API_KEY (in .env or the environment) — this
+spends real API calls.
 
     python3 benchmark/run_benchmark.py
 
@@ -50,14 +51,28 @@ def main() -> None:
     gate_items = [p for e, p in events if e == "gate_item"]
     noul_overrides = [p for p in gate_items if p.get("via_new_entrant")]
 
+    # the request asks for "jev-latest"; the response names the build that
+    # actually answered. Without this a stats.json can't say what it measured.
+    model_versions = sorted({p["model_version"] for p in triage_items if p.get("model_version")})
+    input_tokens = [p["input_tokens"] for p in triage_items if p.get("input_tokens") is not None]
+    output_tokens = [p["output_tokens"] for p in triage_items if p.get("output_tokens") is not None]
+
     stats = {
         "summary": summary,
+        "model_versions": model_versions,
         "triage_call_count": len(triage_items),
         "latency_ms": {
             "min": min(latencies),
             "max": max(latencies),
             "mean": statistics.mean(latencies),
             "median": statistics.median(latencies),
+        },
+        "tokens": {
+            "input_total": sum(input_tokens),
+            "output_total": sum(output_tokens),
+            "input_mean": statistics.mean(input_tokens) if input_tokens else None,
+            "output_mean": statistics.mean(output_tokens) if output_tokens else None,
+            "calls_reporting_usage": len(input_tokens),
         },
         "noul_override_count": len(noul_overrides),
         "noul_overrides": noul_overrides,

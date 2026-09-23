@@ -120,6 +120,15 @@ def run_pipeline(
                 "relevance_confidence": result.relevance_confidence,
                 "is_new_entrant": result.is_new_entrant,
                 "latency_ms": latency_ms,
+                # the rest of what the call returned — distributions behind
+                # each answer, token usage, and the build that answered.
+                # None from a provider that has no such thing to report.
+                "category_probabilities": result.category_probabilities,
+                "relevance_probabilities": result.relevance_probabilities,
+                "relevance_legend": result.relevance_legend,
+                "input_tokens": result.input_tokens,
+                "output_tokens": result.output_tokens,
+                "model_version": result.model_version,
             },
         )
     emit("stage_done", {"stage": "triage", "count": len(judged)})

@@ -39,13 +39,41 @@ class Category(str, Enum):
 
 
 class TriageResult(BaseModel):
-    """Stage 4 output — Jev's judgment on one RawSignal."""
+    """Stage 4 output — Jev's judgment on one RawSignal.
+
+    The first five fields are the judgment itself. Everything below them is
+    what the API hands back *alongside* the judgment and this demo used to
+    throw away on every call: the full probability distributions behind
+    Choice and Score, the level legend, the token usage, and which model
+    version actually answered (the request asks for `jev-latest`, which is a
+    moving target — the response names the build).
+
+    All of it is optional, because only a real provider can supply it.
+    MockTriage leaves these None rather than inventing a distribution, and
+    anything reading them has to handle that — a mock that fakes calibrated
+    probabilities would be worse than a mock that admits it has none.
+    """
 
     category: Category
     category_confidence: float = Field(ge=0.0, le=1.0)
     relevance_score: float = Field(ge=0.0, le=2.0, description="0=noise, 1=worth tracking, 2=high priority")
     relevance_confidence: float = Field(ge=0.0, le=1.0)
     is_new_entrant: float = Field(ge=0.0, le=1.0, description="Noul: confidence this is a genuinely new item")
+
+    category_probabilities: dict[str, float] | None = Field(
+        default=None, description="Choice: probability per option, not just the winner"
+    )
+    relevance_probabilities: dict[str, float] | None = Field(
+        default=None, description="Score: probability per level, keyed by level index"
+    )
+    relevance_legend: dict[str, str] | None = Field(
+        default=None, description="Score: what each level index means, as the model was told"
+    )
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    model_version: str | None = Field(
+        default=None, description="the build that answered, e.g. jev-1.13.0 — not the requested alias"
+    )
 
 
 class SignalStatus(str, Enum):
