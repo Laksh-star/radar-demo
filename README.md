@@ -342,20 +342,21 @@ GENERATE_PROVIDER=mock python3 pipeline.py   # forces the free template
 
 Checked against TypeSafe's [docs index](https://docs.typesafe.ai/llms.txt)
 and a raw probe of the live API, not from memory. ✅ = exercised, ⚠️ =
-partly, ❌ = not.
+partly, ❌ = not. Currently **12 exercised, 2 partly, 7 not** — it started at
+8 / 4 / 12.
 
 | Jev feature | Exercised | Where, or why not |
 |---|:--:|---|
 | **Choice** — pick from options | ✅ | category, everywhere |
-| **Score** — rate against ordered levels | ⚠️ | the number drives the gate, but the gate is binary — "Worth tracking" and "High priority" still behave identically |
+| **Score** — rate against ordered levels | ✅ | both halves of it: the mean drives the ordinary relevance bar, and the level distribution drives the tail rule. "High priority" and "Worth tracking" now lead to different outcomes, which they didn't when the gate was one threshold on the mean |
 | **Noul** — probability a statement is true | ✅ | `gate.py` escalates confident new entrants at a lower bar; the playground makes the override fire on a slider drag |
-| Confidence, separate from the answer | ✅ | `gate.py`'s confidence floor — one sample item scores 1.23 relevance and is still discarded at 0.59 confidence |
+| Confidence, separate from the answer | ✅ | `gate.py`'s confidence floor. Its interaction with the distributions is the interesting part — the tail rule deliberately outranks it, because the two axes disagree exactly where it matters (see the gate section) |
 | Per-option probabilities (Choice) | ✅ | captured, drawn, **and gating** — the unrelated veto in `gate.py` |
 | Per-level probabilities + legend (Score) | ✅ | same — the high-priority tail rule |
 | `usage` token counts | ✅ | per call in the playground, aggregated in the benchmark |
 | Resolved model build | ✅ | `jev-1.13.0` recorded rather than the `jev-latest` alias requested |
 | Several questions per call, evaluated in parallel | ✅ | 3 per call — the efficiency the architecture is built on |
-| Confidence-gated routing | ✅ | literally what `gate.py` is |
+| Confidence-gated routing | ✅ | literally what `gate.py` is — five ordered rules, each naming itself in the trace |
 | Cheap classifier in front of a generative model | ✅ | the demo's whole thesis — 64–91% filtered before deep dive or generation |
 | Structured JSON for criteria | ⚠️ | Choice takes a criteria dict and Score a level list, but `instructions` are plain strings |
 | State structuring | ⚠️ | only `raw.description` is sent; the title, source, url and date are held right there and never reach the model |
@@ -363,14 +364,24 @@ partly, ❌ = not.
 | Composite scoring | ❌ | one relevance question does all the judging |
 | Self-consistency (Noul / Choice variants) | ❌ | not attempted |
 | Re-ranking, semantic search, RAG passage classification, citation verification, guardrails, function calling, extraction, hierarchical classification | ❌ | 16+ cookbook patterns, all different use cases from this one |
-| Sub-second latency (70–500ms claimed) | ✅ | measured 400–930ms across runs — above the claimed ceiling, and said so plainly |
-| Calibration of those probabilities | ❌ | now *visible* since the distributions are captured, but nothing here tests whether they're calibrated |
+| Sub-second latency (70–500ms claimed) | ✅ | measured twice on the same machine and inputs eight hours apart: 831.6–927.8ms, then 384.6–511.6ms. The second run is inside the claimed band bar its slowest call; the cause of the gap isn't established and isn't claimed |
+| Calibration of those probabilities | ❌ | the distributions are now load-bearing, which makes miscalibration consequential rather than cosmetic — and nothing here tests for it. The biggest honest gap left |
 | Official Python / JS SDKs | ❌ | raw `httpx` — no retries, no async client |
 | Cloudflare Workers AI distribution | ❌ | appears in `sample_sources.py` as a signal, never as a call path |
 
-The short version: the judgment layer is thoroughly exercised, the
-distributions are now captured rather than discarded, and the composite /
-self-consistency / fan-out patterns are the largest untouched surface.
+Every one of the gate's five rules decides at least one real item. Judging
+the 11 sample signals against the live API returns: 4 discarded by the
+unrelated veto, 3 below the relevance bar, 2 escalated on the high-priority
+tail, 1 escalated on the bar, and 1 discarded on the confidence floor. No
+rule in this gate is decoration any more, which took three tries to get
+right.
+
+The short version: the judgment layer and everything the API returns
+alongside it are now exercised end to end. What's left untouched is a
+different shape of thing — composite scoring, self-consistency, speculative
+fan-out and the cookbook patterns are all *more calls, differently
+arranged*, not more of the response. And calibration, which this demo now
+depends on and still doesn't test.
 
 ## Making it fully live
 
