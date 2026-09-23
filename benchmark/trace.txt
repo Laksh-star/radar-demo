@@ -97,4 +97,4 @@ logging is stripped; everything below is pipeline.py's own output.
   "noul_overrides": []
 }
 
-Wrote full stats to /Users/ln-mini/Downloads/radar-demo/benchmark/stats.json
+Wrote full stats to benchmark/stats.json
