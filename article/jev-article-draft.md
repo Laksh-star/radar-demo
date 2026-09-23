@@ -43,6 +43,48 @@ I fixed it: a confident new entrant (Noul ≥ 0.7) now clears the gate at a rele
 
 This is, honestly, the most useful thing I can tell you about integrating a model like this: read what every field actually claims to do, and check whether your code uses it. It's an easy thing to miss, and it's exactly the kind of gap that never shows up in a demo built to look finished rather than to be tested.
 
+## Then I found the same mistake one level down
+
+Fixing Noul made me suspicious, so I did the boring thing and diffed what Jev actually returns against what my code read. Here is one real call's response, reformatted for width but otherwise untouched:
+
+```json
+"category":   { "choice": "browser-automation", "confidence": 0.98,
+                "probabilities": {"browser-automation":0.99,"agent-framework":0.01,
+                                  "dev-tooling":0.0,"unrelated":0.0} },
+"relevance":  { "score": 0.9, "confidence": 0.81,
+                "legend": {"0":"Noise","1":"Worth tracking","2":"High priority"},
+                "probabilities": {"0":0.11,"1":0.88,"2":0.01} },
+"is_new_entrant": { "noul": 0.52 },
+"model": "jev-1.13.0",
+"usage": { "input_tokens": 441, "output_tokens": 92 }
+```
+
+My `TriageResult` had fields for five of those values. Everything else — the probability distribution behind each answer, the legend, the token usage, the build that actually answered — was parsed off and dropped on every single call. Same shape of bug as Noul, one level deeper: not an unused field this time, but an unused *dimension* of every field I was already using.
+
+The token counts and the model build are the dull ones, and they cost me something concrete: my first benchmark couldn't say which model produced its numbers, which is exactly why I can't explain the latency change above. The distributions are the interesting ones.
+
+**A confidence score and a probability distribution are not the same thing.** Jev's docs are explicit that confidence is a separate axis from probability, and once you can see both, the difference has teeth. A 0.99/0.01 split across options and a 0.51/0.49 split both arrive as one confident-looking winning label. Worse, on the Score question the number itself is an expectation — and an expectation flattens a split belief. A model that thinks an item is 45% noise and 45% high priority reports almost the same score as one that is calmly certain it is worth tracking.
+
+![Both said worth tracking; only one meant it](screenshots/chart-score-distribution.png)
+
+So I wrote two gate rules that read distributions instead of labels. Both lean on one line in TypeSafe's docs: every question in a call is evaluated *in parallel and in isolation*. Independent questions can disagree — and the winning label is exactly where that disagreement goes to hide.
+
+![Two decisions that need the distribution](screenshots/diagram-distribution-rules.png)
+
+The first is an **unrelated veto**: when Choice puts most of its belief on "not your space", that overrules a relevance score that squeaked over the bar. The second is a **high-priority tail**: enough probability mass on the top level escalates an item on its own, whatever the mean says.
+
+And then I got the second one wrong, in a way that only measuring caught.
+
+I wrote the tail rule *below* the existing confidence floor, which seemed obviously right — don't spend money on an answer the model says it doesn't trust. Then I fired five realistic headlines at it. "Stealth startup raises $40M for agent infrastructure." "Browser vendor ships a native agent API." Every one came back with 0.31–0.62 of its belief on *high priority* — and confidence between 0.28 and 0.52. The floor killed all five before the tail rule was ever consulted.
+
+That is not a coincidence, and it is the whole point: **the items with a split belief are precisely the items the model is least confident about.** Ordering the rules the obvious way made the new one into dead code — the third piece of decoration in a row, for the same reason. I moved the tail check above the floor. "This might be significant and I can't tell" is the strongest case for spending a cheap look, not the weakest.
+
+On the benchmark run, the gate outcomes break down as: four discards by the unrelated veto, three below the relevance bar, one escalation on the bar, and one on the tail. That last one is Cloudflare Workers AI — relevance 1.27 at 52% confidence, with 30% of its belief on high priority. The gate as it stood one commit earlier discarded it on the confidence floor. The filter ratio didn't move at all: still 2 of 9, still 78%. What changed was *which* two.
+
+It is also, finally, something you can put your hands on. The playground I built for this exposes every threshold as a slider, and the distribution row a rule is acting on lights up the moment its bar crosses it — so you can watch the veto kill an item, or drag the tail bar past 30% and watch Cloudflare fall back out.
+
+![The tail rule firing in the playground](screenshots/playground-distribution-gate.png)
+
 ## Proof, not a promise: a real run against the live API
 
 ![A real run: real Jev, real deep dive, real Claude generation](screenshots/dashboard-real-jev-run.png)
@@ -63,7 +105,7 @@ Three honest limits, found by actually running it rather than reading the docs:
 
 ## The verdict
 
-Jev does what it says: fast, structured, multi-question judgments that make a cheap-filter-before-expensive-stage architecture actually work. The three-question-in-one-call design is genuinely efficient, and 78% of items never reaching an expensive stage is a real number from a real run, not a projection. The gaps I found — the latency delta, the unused Noul field, the step-budget risk — weren't reasons to distrust the core claim. They were just the ordinary cost of finding out for real instead of taking a launch post's word for it.
+Jev does what it says: fast, structured, multi-question judgments that make a cheap-filter-before-expensive-stage architecture actually work. The three-question-in-one-call design is genuinely efficient, and 78% of items never reaching an expensive stage is a real number from a real run, not a projection. The gaps I found — the latency delta, the unused Noul field, the discarded distributions, the step-budget risk — weren't reasons to distrust the core claim. They were just the ordinary cost of finding out for real instead of taking a launch post's word for it.
 
 ---
 
