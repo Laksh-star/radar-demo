@@ -62,6 +62,52 @@ the UI shows):
 
 ![Dashboard with a real Jev + Claude run](screenshots/dashboard-real-jev-run.png)
 
+### Or touch the judgment layer directly
+
+```
+python3 playground.py
+open http://localhost:5051
+```
+
+The dashboard answers *"does the pipeline run?"*. The playground answers
+*"what is Jev actually buying me?"* — it pulls stage 4 out of the table and
+makes it something you can poke at. Same `triage.py`, same `gate.py`, same
+`TriageResult` contract; only the framing is different.
+
+![Jev playground — a judgment and the gate](screenshots/playground-judgment.png)
+
+Four things you can do with your hands:
+
+1. **Ask Jev something** — tap one of the sample signals or type your own
+   headline, and watch Choice / Score / Noul land together with their
+   confidences and the measured round-trip latency.
+2. **Move the gate** — four sliders for the thresholds in `gate.py`
+   (they're loaded from it at page load, not hardcoded in the page). The
+   judgment stays fixed; no new calls are made. Only the bars move, and the
+   verdict flips under your hand with a plain-English sentence saying
+   exactly which of the three answers decided it. Drag the Noul bar below an
+   item's Noul score and you can watch the **NOUL OVERRIDE** fire in real
+   time — the mechanism `gate.py` describes, made tactile.
+3. **Race a full LLM** — the same three questions go to Jev and to Sonnet at
+   the same moment, asked for identical JSON. Both lanes show their answer,
+   their latency, and (for the LLM) the tokens it burned writing that JSON
+   out token by token. Measured runs here came in at 3.8–5.3× faster for the
+   same verdict.
+4. **Fire a batch** — all 10 sample signals judged concurrently (8 at a
+   time), each tile flipping as its own call returns, ending in the funnel:
+   how many came in, how many escalated, how many were dropped before
+   anything expensive ran.
+
+![Jev playground — race and batch](screenshots/playground-race-batch.png)
+
+Every number on that page is measured in your own session — nothing is
+replayed from `benchmark/stats.json`. The bottom ledger only shows "LLM time
+saved" *after* you've run a race, because until then it has no measured LLM
+latency to subtract, and it won't quote a claimed one. With no
+`TYPESAFE_API_KEY` set it runs the same page against `MockTriage` and the
+badge says so; the race lane needs `ANTHROPIC_API_KEY` and disables itself
+without one.
+
 ## Benchmark data
 
 `benchmark/run_benchmark.py` runs the pipeline once against the fixed mock
@@ -97,6 +143,7 @@ python3 benchmark/run_benchmark.py   # needs TYPESAFE_API_KEY + ANTHROPIC_API_KE
 | `generate.py` | real | pluggable `GenerateProvider` interface — `ClaudeGenerate` calls the Anthropic API using stage 5's enriched detail, `MockGenerate` is the original templated placeholder kept as a no-key fallback |
 | `pipeline.py` | real | `run_pipeline()` orchestrates all 8 stages and emits an event per step; `pipeline.py`'s own `main()` prints a trace, `dashboard.py` renders those same events live |
 | `dashboard.py` | real | Flask + Server-Sent Events; a local web view of a run, with a dedicated live panel for Jev's per-item judgments |
+| `playground.py` | real | Flask + SSE hands-on view of stage 4 alone — live Jev calls, draggable `gate.py` thresholds, a same-moment Jev-vs-LLM race, and a concurrent batch |
 
 Every stage now has a real path — including stage 5's deep dive, which
 opens each escalated item's own url and hands `generate.py` a couple of

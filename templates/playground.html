@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jev Playground — feel the judgment layer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAFAF7; --surface:#FFFFFF; --ink:#1C2128; --muted:#68707B; --line:#DBDEE3;
+    --accent:#3454D1; --accent-soft:#EEF1FC;
+    --keep:#1F7A54; --keep-soft:#E9F5EF;
+    --drop:#B5540B; --drop-soft:#FBEEE3;
+    --warn:#8A5CF6; --warn-soft:#F1EBFE;
+    --code-bg:#F1F0EA;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14171C; --surface:#1B1F27; --ink:#E7E9ED; --muted:#98A1AC; --line:#2B303A;
+      --accent:#8CA2FF; --accent-soft:#20263A;
+      --keep:#5FCB9B; --keep-soft:#17261F;
+      --drop:#E8975A; --drop-soft:#2A2018;
+      --warn:#B9A0FF; --warn-soft:#241D33;
+      --code-bg:#20242C;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+    padding:30px 16px 120px; -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:1000px;margin:0 auto;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:600;margin:0 0 8px;}
+  h1{font-size:clamp(23px,4.5vw,33px);line-height:1.12;margin:0 0 12px;letter-spacing:-.015em;}
+  .intro{color:var(--muted);font-size:15px;line-height:1.6;max-width:66ch;margin:0 0 18px;}
+  .keyrow{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:30px;}
+  .pill{font-family:'IBM Plex Mono',monospace;font-size:11px;padding:4px 10px;border-radius:20px;background:var(--code-bg);color:var(--muted);}
+  .pill.live{background:var(--keep-soft);color:var(--keep);font-weight:600;}
+  .pill.mock{background:var(--drop-soft);color:var(--drop);font-weight:600;}
+
+  section{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 20px 22px;margin-bottom:18px;}
+  .sec-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px;}
+  .sec-num{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-soft);padding:3px 8px;border-radius:6px;}
+  h2{font-size:17px;margin:0;letter-spacing:-.01em;}
+  .sec-sub{color:var(--muted);font-size:13.5px;line-height:1.55;margin:6px 0 18px;max-width:72ch;}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+  .chip{
+    font-size:12.5px;padding:8px 13px;border-radius:20px;border:1px solid var(--line);
+    background:var(--bg);color:var(--ink);cursor:pointer;line-height:1.2;
+    transition:border-color .15s,background .15s;
+  }
+  .chip:hover,.chip:focus-visible{border-color:var(--accent);background:var(--accent-soft);}
+  .chip.tricky{border-style:dashed;}
+  .chip .tag{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--muted);margin-left:6px;text-transform:uppercase;letter-spacing:.04em;}
+
+  textarea{
+    width:100%;min-height:92px;resize:vertical;padding:13px 14px;border-radius:10px;
+    border:1px solid var(--line);background:var(--bg);color:var(--ink);
+    font:14px/1.55 'IBM Plex Sans',sans-serif;
+  }
+  textarea:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent;}
+  .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;}
+  button{
+    font:600 14px 'IBM Plex Sans',sans-serif;padding:12px 22px;border-radius:9px;
+    border:none;background:var(--accent);color:#fff;cursor:pointer;min-height:44px;
+  }
+  button.ghost{background:transparent;color:var(--accent);border:1px solid var(--line);}
+  button:disabled{opacity:.45;cursor:not-allowed;}
+  .err{color:var(--drop);font-size:12.5px;font-family:'IBM Plex Mono',monospace;}
+
+  /* ---- judgment cards ---- */
+  .judgment{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:20px;}
+  @media (max-width:720px){ .judgment{grid-template-columns:1fr;} }
+  .jcard{border:1px solid var(--line);border-radius:12px;padding:15px 16px;background:var(--bg);position:relative;}
+  .jcard .qname{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);font-weight:600;}
+  .jcard .qwhat{font-size:11.5px;color:var(--muted);margin:3px 0 12px;line-height:1.4;}
+  .jval{font-size:20px;font-weight:600;letter-spacing:-.01em;margin-bottom:2px;}
+  .jval.small{font-size:16px;}
+  .conf{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);}
+
+  .ring{width:54px;height:54px;border-radius:50%;position:absolute;top:14px;right:14px;
+    background:conic-gradient(var(--accent) calc(var(--p)*1%), var(--code-bg) 0);
+    display:flex;align-items:center;justify-content:center;transition:--p .5s;}
+  .ring::after{content:attr(data-label);width:40px;height:40px;border-radius:50%;background:var(--bg);
+    display:flex;align-items:center;justify-content:center;font:600 11px 'IBM Plex Mono',monospace;color:var(--ink);}
+
+  .gauge{margin-top:12px;position:relative;height:9px;border-radius:5px;background:var(--code-bg);overflow:visible;}
+  .gauge .fill{position:absolute;inset:0 auto 0 0;border-radius:5px;background:var(--accent);width:0;transition:width .5s cubic-bezier(.2,.8,.2,1);}
+  .gauge .mark{position:absolute;top:-4px;width:2px;height:17px;background:var(--ink);opacity:.55;transition:left .12s;}
+  .gauge .mark::after{content:attr(data-label);position:absolute;top:19px;left:50%;transform:translateX(-50%);
+    font:600 9px 'IBM Plex Mono',monospace;color:var(--muted);white-space:nowrap;letter-spacing:.03em;}
+  .tiers{display:flex;justify-content:space-between;margin-top:20px;font:9.5px 'IBM Plex Mono',monospace;color:var(--muted);letter-spacing:.03em;text-transform:uppercase;}
+
+  .latency-strip{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:18px;padding:13px 15px;border-radius:10px;background:var(--accent-soft);}
+  .latency-strip .big{font:600 22px 'IBM Plex Mono',monospace;color:var(--accent);font-variant-numeric:tabular-nums;}
+  .latency-strip .txt{font-size:12.5px;color:var(--muted);line-height:1.5;}
+
+  /* ---- gate ---- */
+  .gate-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
+  @media (max-width:780px){ .gate-grid{grid-template-columns:1fr;} }
+  .slider{margin-bottom:16px;}
+  .slider .lbl{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;margin-bottom:6px;gap:10px;}
+  .slider .lbl .v{font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--accent);}
+  .slider .hint{font-size:11px;color:var(--muted);line-height:1.45;margin-top:4px;}
+  input[type=range]{width:100%;accent-color:var(--accent);height:30px;}
+
+  .verdict{border-radius:12px;padding:16px;border:1px solid var(--line);background:var(--bg);}
+  .verdict .pill-big{display:inline-block;font:700 13px 'IBM Plex Mono',monospace;letter-spacing:.06em;padding:6px 13px;border-radius:20px;}
+  .verdict .pill-big.escalate{background:var(--keep-soft);color:var(--keep);}
+  .verdict .pill-big.discard{background:var(--drop-soft);color:var(--drop);}
+  .verdict .why{font-size:13px;line-height:1.6;color:var(--ink);margin:12px 0 0;}
+  .verdict .why b{color:var(--accent);}
+  .noul-flag{display:inline-block;margin-top:10px;font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.05em;
+    padding:3px 8px;border-radius:20px;background:var(--warn-soft);color:var(--warn);}
+
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px;}
+  .col{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--bg);min-height:90px;}
+  .col h3{font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;margin:0 0 10px;}
+  .col.keep h3{color:var(--keep);} .col.drop h3{color:var(--drop);}
+  .col .empty{font-size:11.5px;color:var(--muted);}
+  .mini{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:12px;}
+  .mini:last-child{border-bottom:none;}
+  .mini .dot{width:7px;height:7px;border-radius:50%;flex:none;}
+  .mini .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .mini .sc{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--muted);flex:none;}
+
+  /* ---- race ---- */
+  .lanes{display:flex;flex-direction:column;gap:12px;margin-top:18px;}
+  .lane{border:1px solid var(--line);border-radius:10px;padding:13px 15px;background:var(--bg);}
+  .lane .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:9px;}
+  .lane .who{font-weight:600;font-size:13.5px;}
+  .lane .who small{font-family:'IBM Plex Mono',monospace;font-weight:400;font-size:10.5px;color:var(--muted);margin-left:7px;}
+  .lane .ms{font:600 14px 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;}
+  .track{height:11px;border-radius:6px;background:var(--code-bg);overflow:hidden;}
+  .track > span{display:block;height:100%;width:0;border-radius:6px;transition:width .1s linear;}
+  .lane.jev .track > span{background:var(--accent);} .lane.jev .ms{color:var(--accent);}
+  .lane.llm .track > span{background:var(--warn);} .lane.llm .ms{color:var(--warn);}
+  .lane .ans{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-top:9px;line-height:1.5;}
+  .race-note{margin-top:14px;font-size:13px;line-height:1.6;color:var(--ink);}
+
+  /* ---- batch ---- */
+  .dots{display:flex;flex-wrap:wrap;gap:7px;margin-top:16px;}
+  .bdot{width:34px;height:34px;border-radius:9px;background:var(--code-bg);display:flex;align-items:center;
+    justify-content:center;font:600 10px 'IBM Plex Mono',monospace;color:var(--muted);
+    transition:background .25s,color .25s,transform .25s;}
+  .bdot.done{transform:scale(1.04);}
+  .bdot.keep{background:var(--keep-soft);color:var(--keep);}
+  .bdot.drop{background:var(--drop-soft);color:var(--drop);}
+  .funnel{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;font-size:13px;}
+  .fstep{padding:9px 14px;border-radius:9px;background:var(--code-bg);font-family:'IBM Plex Mono',monospace;font-size:12px;}
+  .fstep.keep{background:var(--keep-soft);color:var(--keep);font-weight:600;}
+  .fstep.drop{background:var(--drop-soft);color:var(--drop);font-weight:600;}
+  .farrow{color:var(--muted);}
+
+  /* ---- ledger ---- */
+  .ledger{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);
+    padding:11px 16px;z-index:10;}
+  .ledger-in{max-width:1000px;margin:0 auto;display:flex;gap:22px;flex-wrap:wrap;align-items:center;}
+  .stat{display:flex;flex-direction:column;gap:1px;}
+  .stat .k{font:10px 'IBM Plex Mono',monospace;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);}
+  .stat .v{font:600 16px 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;}
+  .stat .v.accent{color:var(--accent);} .stat .v.keep{color:var(--keep);}
+  .ledger .hint{font-size:11px;color:var(--muted);margin-left:auto;max-width:34ch;line-height:1.4;}
+  @media (max-width:760px){ .ledger-in{gap:14px;} .ledger .hint{display:none;} }
+
+  footer{margin-top:26px;font-size:12px;color:var(--muted);text-align:center;line-height:1.7;}
+  footer a{color:var(--accent);}
+  .hidden{display:none !important;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Competitive AI-Tool Radar · stage 4, up close</p>
+  <h1>What is Jev actually buying you?</h1>
+  <p class="intro">
+    The pipeline dashboard shows Jev as three columns in a table. That tells you it ran.
+    It doesn't tell you what it's <em>for</em>. So: type anything below, watch the judgment
+    land, then drag the gate and watch the decision change under your hands.
+    Every number on this page is measured live in your browser session — nothing is replayed.
+  </p>
+  <div class="keyrow" id="keyrow"><span class="pill">checking provider…</span></div>
+
+  <!-- 1 ------------------------------------------------------------------ -->
+  <section>
+    <div class="sec-head"><span class="sec-num">01</span><h2>Ask Jev something</h2></div>
+    <p class="sec-sub">
+      One call, three questions, answered together: <b>Choice</b> (which bucket),
+      <b>Score</b> (how significant, 0–2), <b>Noul</b> (is this genuinely new, or a repost).
+      Tap a real signal from the demo's sample set, or write your own headline.
+    </p>
+    <div class="chips" id="chips"></div>
+    <textarea id="input" placeholder="e.g. A startup launched a hosted browser-agent runtime today with a free tier…"></textarea>
+    <div class="actions">
+      <button id="judge-btn">Ask Jev</button>
+      <button class="ghost" id="clear-btn">Clear session</button>
+      <span class="err" id="judge-err"></span>
+    </div>
+
+    <div id="result" class="hidden">
+      <div class="judgment">
+        <div class="jcard">
+          <div class="ring" id="cat-ring" data-label="—" style="--p:0"></div>
+          <div class="qname">Choice</div>
+          <div class="qwhat">which competitive bucket</div>
+          <div class="jval small" id="cat-val">—</div>
+          <div class="conf" id="cat-conf">confidence —</div>
+        </div>
+        <div class="jcard">
+          <div class="qname">Score</div>
+          <div class="qwhat">how significant a signal, 0–2</div>
+          <div class="jval" id="score-val">—</div>
+          <div class="conf" id="score-conf">confidence —</div>
+          <div class="gauge">
+            <div class="fill" id="score-fill"></div>
+            <div class="mark" id="score-mark" data-label="GATE" style="left:50%"></div>
+          </div>
+          <div class="tiers"><span>noise</span><span>worth tracking</span><span>high priority</span></div>
+        </div>
+        <div class="jcard">
+          <div class="qname">Noul</div>
+          <div class="qwhat">confidence it's a new entrant</div>
+          <div class="jval" id="noul-val">—</div>
+          <div class="conf">0 = seen this before · 1 = first sighting</div>
+          <div class="gauge">
+            <div class="fill" id="noul-fill"></div>
+            <div class="mark" id="noul-mark" data-label="NEW" style="left:70%"></div>
+          </div>
+          <div class="tiers"><span>0.0</span><span>0.5</span><span>1.0</span></div>
+        </div>
+      </div>
+      <div class="latency-strip">
+        <span class="big" id="lat-val">—</span>
+        <span class="txt" id="lat-txt">round-trip, from this machine</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 ------------------------------------------------------------------ -->
+  <section>
+    <div class="sec-head"><span class="sec-num">02</span><h2>Now move the gate</h2></div>
+    <p class="sec-sub">
+      This is the part a table can't show you. The judgment above is fixed — no new calls are
+      being made. All that changes is where you put the bars. Watch the verdict, and watch
+      items jump columns as you drag.
+    </p>
+    <div class="gate-grid">
+      <div>
+        <div class="slider">
+          <div class="lbl"><span>Relevance bar</span><span class="v" id="v-rel">1.00</span></div>
+          <input type="range" id="s-rel" min="0" max="2" step="0.05">
+          <div class="hint">How high Score must be for a normal item to earn a deep dive.</div>
+        </div>
+        <div class="slider">
+          <div class="lbl"><span>Confidence floor</span><span class="v" id="v-conf">0.60</span></div>
+          <input type="range" id="s-conf" min="0" max="1" step="0.01">
+          <div class="hint">Below this, Jev is telling you it isn't sure — so nothing is spent either way.</div>
+        </div>
+        <div class="slider">
+          <div class="lbl"><span>Noul bar — "genuinely new"</span><span class="v" id="v-noul">0.70</span></div>
+          <input type="range" id="s-noul" min="0" max="1" step="0.01">
+          <div class="hint">Above this, the item is treated as a first sighting, not a repost.</div>
+        </div>
+        <div class="slider">
+          <div class="lbl"><span>Relevance bar <em>for new entrants</em></span><span class="v" id="v-nrel">0.70</span></div>
+          <input type="range" id="s-nrel" min="0" max="2" step="0.05">
+          <div class="hint">The lower bar a confident new entrant clears instead. Set it equal to the
+            normal bar and Noul stops mattering — that's the "before" state this demo started from.</div>
+        </div>
+      </div>
+      <div>
+        <div class="verdict" id="verdict">
+          <span class="pill-big discard" id="verdict-pill">NO ITEM YET</span>
+          <p class="why" id="verdict-why">Ask Jev something above and this will explain, in words, exactly why it lives or dies.</p>
+        </div>
+        <div class="cols">
+          <div class="col keep"><h3>Escalate → costs money</h3><div id="col-keep"><div class="empty">nothing yet</div></div></div>
+          <div class="col drop"><h3>Discard → costs nothing</h3><div id="col-drop"><div class="empty">nothing yet</div></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 ------------------------------------------------------------------ -->
+  <section>
+    <div class="sec-head"><span class="sec-num">03</span><h2>Race it against a full LLM</h2></div>
+    <p class="sec-sub">
+      Same item, same three questions, fired at the same moment — Jev in one lane,
+      <span class="mono" id="race-model">Sonnet</span> in the other, asked for the identical JSON.
+      The point isn't that one is better. It's that they mostly agree, and one of them
+      costs you an order of magnitude less time per item.
+    </p>
+    <div class="actions">
+      <button id="race-btn">Race the current item</button>
+      <span class="err" id="race-err"></span>
+    </div>
+    <div class="lanes hidden" id="lanes">
+      <div class="lane jev">
+        <div class="top"><span class="who">Jev <small id="jev-model">system one</small></span><span class="ms" id="jev-ms">…</span></div>
+        <div class="track"><span id="jev-track"></span></div>
+        <div class="ans" id="jev-ans"></div>
+      </div>
+      <div class="lane llm">
+        <div class="top"><span class="who">Full LLM <small id="llm-model"></small></span><span class="ms" id="llm-ms">…</span></div>
+        <div class="track"><span id="llm-track"></span></div>
+        <div class="ans" id="llm-ans"></div>
+      </div>
+    </div>
+    <p class="race-note hidden" id="race-note"></p>
+  </section>
+
+  <!-- 4 ------------------------------------------------------------------ -->
+  <section>
+    <div class="sec-head"><span class="sec-num">04</span><h2>Fire the whole morning's feed at it</h2></div>
+    <p class="sec-sub">
+      Ten real signals from the demo's sample set, judged concurrently. Each tile flips the
+      moment its own call returns. What you're watching is the filter that decides how much
+      of your expensive stage ever runs.
+    </p>
+    <div class="actions">
+      <button id="batch-btn">Judge 10 signals at once</button>
+      <span class="err" id="batch-err"></span>
+    </div>
+    <div class="dots" id="dots"></div>
+    <div class="funnel hidden" id="funnel"></div>
+  </section>
+
+  <footer>
+    Part of the <a href="https://github.com/Laksh-star/radar-demo">Competitive AI-Tool Radar</a> demo ·
+    the same <span class="mono">triage.py</span> and <span class="mono">gate.py</span> the pipeline uses ·
+    pipeline view at <span class="mono">python3 dashboard.py</span>
+  </footer>
+</div>
+
+<div class="ledger">
+  <div class="ledger-in">
+    <div class="stat"><span class="k">judged</span><span class="v" id="st-judged">0</span></div>
+    <div class="stat"><span class="k">mean latency</span><span class="v accent" id="st-lat">—</span></div>
+    <div class="stat"><span class="k">filtered out</span><span class="v" id="st-filtered">—</span></div>
+    <div class="stat"><span class="k">LLM calls avoided</span><span class="v keep" id="st-avoided">0</span></div>
+    <div class="stat"><span class="k">LLM time saved</span><span class="v keep" id="st-saved">—</span></div>
+    <p class="hint" id="st-hint">Time saved appears once you've run a race — it uses your own measured LLM latency, not a claimed one.</p>
+  </div>
+</div>
+
+<script>
+const PRESETS = [
+  {tag:"launch", title:"TypeSafe AI launches Jev, a non-autoregressive model for structured predictions",
+   description:"New 'System One' model family from TypeSafe AI. Bypasses token-by-token generation for deterministic Choice/Score/Noul predictions in 70-500ms, positioned as a fast classifier/router in front of generative LLMs."},
+  {tag:"repo", title:"steel-dev/awesome-web-agents",
+   description:"Curated list of tools, frameworks and resources for building AI web agents — trending alongside renewed interest in browser-controlling agents."},
+  {tag:"new entrant", title:"Hyperagent — alpha access for AI browser agents",
+   description:"Browser-agent platform in alpha testing, positioned for practitioner-voice workflows and agentic web automation."},
+  {tag:"distribution", title:"Jev (typesafe) model card",
+   description:"Cloudflare Workers AI adds the Jev model to its catalog — infrastructure-level distribution for TypeSafe AI's System One model."},
+  {tag:"the hard one", tricky:true, title:"Show HN: A weekend note-taking app with local-first sync",
+   description:"Personal note-taking side project, local-first storage, no AI or agent angle."},
+  {tag:"noise", title:"pixel-forge/retro-engine",
+   description:"2D retro game engine written in Rust, trending on GitHub this week."},
+  {tag:"pure noise", title:"Ask HN: Best way to learn woodworking as a beginner?",
+   description:"Discussion thread, no product or company signal."},
+  {tag:"repost", title:"steel-dev — cloud browser infrastructure for AI agents",
+   description:"Same 'steel-dev' entity surfacing a second time today via Product Hunt — a good case for the dedup layer once it's been through the pipeline once."},
+];
+const BATCH_ITEMS = PRESETS.concat([
+  {title:"PlannerPro — a new productivity planner app",
+   description:"Daily planner and habit tracker app for consumers, no developer tooling angle."},
+  {title:"browser-use/browser-use-examples",
+   description:"Companion examples repo for browser-use, trending alongside growing interest in browser-controlling agents and their integration patterns."},
+]);
+
+const CAT_LABEL = {
+  "agent-framework":"Agent framework", "browser-automation":"Browser automation",
+  "dev-tooling":"Dev tooling", "unrelated":"Unrelated",
+};
+
+let T = {relevance:1.0, confidence:0.6, new_entrant:0.7, new_entrant_relevance:0.7};
+let current = null;            // {label, judgment, latency_ms}
+let session = [];              // every item judged this session
+let llmReference = null;       // measured LLM latency, only from a real race
+
+const $ = id => document.getElementById(id);
+const fmt = (n, d=2) => Number(n).toFixed(d);
+const pct = n => Math.round(n*100) + "%";
+
+/* ---------- gate: mirrors gate.py exactly, in words ---------- */
+function decide(j){
+  if (j.relevance_confidence < T.confidence){
+    return {escalate:false, noul:false, why:
+      `Jev's own confidence in that relevance score is <b>${pct(j.relevance_confidence)}</b>, under your
+       <b>${pct(T.confidence)}</b> floor. It's saying "don't trust me on this one" — so the pipeline spends
+       nothing either way. That's a judgment about the judgment, and it's why the score alone was never enough.`};
+  }
+  if (j.is_new_entrant >= T.new_entrant){
+    const ok = j.relevance_score >= T.new_entrant_relevance;
+    const wouldNormally = j.relevance_score >= T.relevance;
+    return {escalate:ok, noul:ok && !wouldNormally, why:
+      `Noul reads <b>${fmt(j.is_new_entrant)}</b> — over your <b>${fmt(T.new_entrant)}</b> bar, so this counts as a
+       genuine first sighting, not a repost. New entrants only need <b>${fmt(T.new_entrant_relevance)}</b> relevance
+       instead of <b>${fmt(T.relevance)}</b>, and this scored <b>${fmt(j.relevance_score)}</b> — ${ok ? "it clears" : "still short"}.
+       ${ok && !wouldNormally ? "Under the normal bar this would have been thrown away." : ""}`};
+  }
+  const ok = j.relevance_score >= T.relevance;
+  return {escalate:ok, noul:false, why:
+    `Noul reads <b>${fmt(j.is_new_entrant)}</b>, under your <b>${fmt(T.new_entrant)}</b> bar — so this is treated as
+     something you've likely seen before, and it has to clear the full <b>${fmt(T.relevance)}</b> relevance bar on its
+     own merit. It scored <b>${fmt(j.relevance_score)}</b>, so ${ok ? "in it goes" : "it stops here"}.`};
+}
+
+/* ---------- rendering ---------- */
+function renderJudgment(){
+  if (!current) return;
+  const j = current.judgment;
+  $("result").classList.remove("hidden");
+  $("cat-val").textContent = CAT_LABEL[j.category] || j.category;
+  $("cat-conf").textContent = "confidence " + pct(j.category_confidence);
+  const ring = $("cat-ring");
+  ring.style.setProperty("--p", j.category_confidence*100);
+  ring.dataset.label = pct(j.category_confidence);
+
+  $("score-val").textContent = fmt(j.relevance_score) + " / 2.0";
+  $("score-conf").textContent = "confidence " + pct(j.relevance_confidence);
+  $("score-fill").style.width = (j.relevance_score/2*100) + "%";
+
+  $("noul-val").textContent = fmt(j.is_new_entrant);
+  $("noul-fill").style.width = (j.is_new_entrant*100) + "%";
+
+  $("lat-val").textContent = Math.round(current.latency_ms) + " ms";
+  $("lat-txt").innerHTML = llmReference
+    ? `round-trip from this machine. Your measured LLM lane took <b>${Math.round(llmReference)} ms</b> for the same question.`
+    : `round-trip from this machine — not model inference time. Race it in section 03 to see what the same question costs a full LLM.`;
+  renderVerdict();
+}
+
+function renderVerdict(){
+  const marks = {relevance:$("score-mark"), noul:$("noul-mark")};
+  const useNoul = current && current.judgment.is_new_entrant >= T.new_entrant;
+  const effectiveBar = useNoul ? T.new_entrant_relevance : T.relevance;
+  marks.relevance.style.left = (effectiveBar/2*100) + "%";
+  marks.relevance.dataset.label = useNoul ? "NEW-ENTRANT BAR" : "GATE";
+  marks.noul.style.left = (T.new_entrant*100) + "%";
+
+  if (!current) return;
+  const d = decide(current.judgment);
+  const pill = $("verdict-pill");
+  pill.textContent = d.escalate ? "ESCALATE" : "DISCARD";
+  pill.className = "pill-big " + (d.escalate ? "escalate" : "discard");
+  $("verdict-why").innerHTML = d.why + (d.noul ? `<br><span class="noul-flag">NOUL OVERRIDE — Jev's third answer is what saved this one</span>` : "");
+  renderColumns();
+  renderLedger();
+}
+
+function renderColumns(){
+  const keep = [], drop = [];
+  session.forEach(it => (decide(it.judgment).escalate ? keep : drop).push(it));
+  const paint = (el, list, cls) => {
+    el.innerHTML = list.length ? list.map(it => `
+      <div class="mini">
+        <span class="dot" style="background:var(--${cls})"></span>
+        <span class="name">${it.label}</span>
+        <span class="sc">${fmt(it.judgment.relevance_score)} · noul ${fmt(it.judgment.is_new_entrant)}</span>
+      </div>`).join("") : `<div class="empty">nothing here</div>`;
+  };
+  paint($("col-keep"), keep, "keep");
+  paint($("col-drop"), drop, "drop");
+}
+
+function renderLedger(){
+  const n = session.length;
+  $("st-judged").textContent = n;
+  if (!n){ $("st-lat").textContent="—"; $("st-filtered").textContent="—"; $("st-avoided").textContent="0"; return; }
+  const meanLat = session.reduce((s,i)=>s+i.latency_ms,0)/n;
+  const kept = session.filter(i=>decide(i.judgment).escalate).length;
+  const avoided = n - kept;
+  $("st-lat").textContent = Math.round(meanLat) + " ms";
+  $("st-filtered").textContent = Math.round(avoided/n*100) + "%";
+  $("st-avoided").textContent = avoided;
+  if (llmReference){
+    const saved = (avoided * (llmReference - meanLat))/1000;
+    $("st-saved").textContent = saved.toFixed(1) + " s";
+    $("st-hint").textContent = `Using your own measured LLM latency (${Math.round(llmReference)} ms) minus Jev's, across the ${avoided} items the gate dropped.`;
+  }
+}
+
+/* ---------- actions ---------- */
+async function judge(){
+  const text = $("input").value.trim();
+  $("judge-err").textContent = "";
+  if (!text){ $("judge-err").textContent = "type or tap something first"; return; }
+  const btn = $("judge-btn"); btn.disabled = true; btn.textContent = "asking Jev…";
+  try{
+    const title = ($("input").dataset.title || text.slice(0,70));
+    const r = await fetch("/api/judge", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({title, description:text})});
+    const data = await r.json();
+    if (!data.ok){ $("judge-err").textContent = data.error; return; }
+    current = {label:title, judgment:data.judgment, latency_ms:data.latency_ms};
+    session.push(current);
+    renderJudgment();
+  } catch(e){ $("judge-err").textContent = String(e); }
+  finally { btn.disabled = false; btn.textContent = "Ask Jev"; }
+}
+
+async function race(){
+  if (!current){ $("race-err").textContent = "judge an item in section 01 first"; return; }
+  $("race-err").textContent = "";
+  const btn = $("race-btn"); btn.disabled = true; btn.textContent = "racing…";
+  $("lanes").classList.remove("hidden"); $("race-note").classList.add("hidden");
+  $("jev-ms").textContent = "…"; $("llm-ms").textContent = "…";
+  $("jev-ans").textContent = ""; $("llm-ans").textContent = "";
+  $("jev-track").style.width = "0"; $("llm-track").style.width = "0";
+
+  const t0 = performance.now();
+  let ceiling = 6000;
+  const tick = setInterval(() => {
+    const e = performance.now() - t0;
+    $("jev-track").style.width = Math.min(100, e/ceiling*100) + "%";
+    $("llm-track").style.width = Math.min(100, e/ceiling*100) + "%";
+    $("jev-ms").textContent = Math.round(e) + " ms";
+    $("llm-ms").textContent = Math.round(e) + " ms";
+  }, 40);
+
+  try{
+    const r = await fetch("/api/race", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({title:current.label, description:$("input").value.trim()})});
+    const data = await r.json();
+    clearInterval(tick);
+    if (!data.ok){ $("race-err").textContent = data.error; $("lanes").classList.add("hidden"); return; }
+
+    const jev = data.jev, llm = data.llm;
+    ceiling = Math.max(jev.latency_ms || 0, llm.latency_ms || 0);
+    if (jev.ok){
+      $("jev-ms").textContent = Math.round(jev.latency_ms) + " ms";
+      $("jev-track").style.width = (jev.latency_ms/ceiling*100) + "%";
+      $("jev-ans").textContent = describe(jev.judgment);
+    } else { $("jev-ms").textContent = "error"; $("jev-ans").textContent = jev.error; }
+
+    if (llm.ok){
+      llmReference = llm.latency_ms;
+      $("llm-model").textContent = llm.model;
+      $("llm-ms").textContent = Math.round(llm.latency_ms) + " ms";
+      $("llm-track").style.width = "100%";
+      $("llm-ans").textContent = describe(llm.judgment) + `  ·  ${llm.input_tokens} in / ${llm.output_tokens} out tokens`;
+    } else { $("llm-ms").textContent = "error"; $("llm-ans").textContent = llm.error; }
+
+    if (jev.ok && llm.ok){
+      const x = (llm.latency_ms / jev.latency_ms);
+      const agree = jev.judgment.category === llm.judgment.category;
+      $("race-note").innerHTML =
+        `<b>${x.toFixed(1)}× faster</b> for the same question, and they ${agree
+          ? `<b>agreed on the category</b> (${CAT_LABEL[jev.judgment.category]||jev.judgment.category})`
+          : `<b>disagreed</b> — Jev said ${CAT_LABEL[jev.judgment.category]}, the LLM said ${CAT_LABEL[llm.judgment.category]||llm.judgment.category}`}.
+         The LLM also burned ${llm.output_tokens} output tokens writing JSON; Jev returns the structure natively,
+         which is the whole difference between generating an answer and predicting one.`;
+      $("race-note").classList.remove("hidden");
+      renderJudgment();
+    }
+  } catch(e){ clearInterval(tick); $("race-err").textContent = String(e); }
+  finally { btn.disabled = false; btn.textContent = "Race the current item"; }
+}
+
+function describe(j){
+  if (!j || !j.category) return "no parsable answer";
+  return `${j.category} (${pct(j.category_confidence)}) · score ${fmt(j.relevance_score)} (${pct(j.relevance_confidence)}) · noul ${fmt(j.is_new_entrant)}`;
+}
+
+let batchState = null;
+async function runBatch(){
+  $("batch-err").textContent = "";
+  const btn = $("batch-btn"); btn.disabled = true; btn.textContent = "judging…";
+  $("funnel").classList.add("hidden");
+  $("dots").innerHTML = BATCH_ITEMS.map((it,i)=>`<div class="bdot" id="bdot-${i}">${i+1}</div>`).join("");
+  batchState = {t0: performance.now(), results: []};
+  try{
+    const r = await fetch("/api/batch", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({items: BATCH_ITEMS})});
+    const data = await r.json();
+    if (!data.ok){ $("batch-err").textContent = data.error; btn.disabled=false; btn.textContent="Judge 10 signals at once"; }
+  } catch(e){ $("batch-err").textContent = String(e); btn.disabled=false; btn.textContent="Judge 10 signals at once"; }
+}
+
+function onBatchItem(p){
+  const el = $("bdot-"+p.index);
+  const esc = decide(p.judgment).escalate;
+  if (el){ el.className = "bdot done " + (esc ? "keep" : "drop"); el.textContent = Math.round(p.latency_ms); }
+  session.push({label:p.label, judgment:p.judgment, latency_ms:p.latency_ms});
+  batchState.results.push(p);
+  renderColumns(); renderLedger();
+}
+
+function onBatchDone(p){
+  const btn = $("batch-btn"); btn.disabled = false; btn.textContent = "Judge 10 signals again";
+  const res = batchState.results;
+  const kept = res.filter(r => decide(r.judgment).escalate).length;
+  const sumLat = res.reduce((s,r)=>s+r.latency_ms,0);
+  $("funnel").innerHTML = `
+    <span class="fstep">${p.count} signals in</span>
+    <span class="farrow">→</span>
+    <span class="fstep">${Math.round(p.wall_ms)} ms wall clock · ${p.concurrency} at a time</span>
+    <span class="farrow">→</span>
+    <span class="fstep keep">${kept} escalated</span>
+    <span class="fstep drop">${p.count-kept} dropped before anything expensive ran</span>`;
+  $("funnel").classList.remove("hidden");
+  $("funnel").insertAdjacentHTML("beforeend",
+    `<div style="flex-basis:100%;font-size:12.5px;color:var(--muted);line-height:1.6;margin-top:4px">
+      One at a time that's ${(sumLat/1000).toFixed(1)}s of waiting; concurrently it's ${(p.wall_ms/1000).toFixed(1)}s —
+      ${(sumLat/p.wall_ms).toFixed(1)}× throughput, on a stage cheap enough to run on everything you see.
+     </div>`);
+}
+
+/* ---------- wiring ---------- */
+function bindSlider(id, key, label, digits){
+  const el = $(id);
+  el.value = T[key];
+  $(label).textContent = fmt(T[key], digits);
+  el.addEventListener("input", () => {
+    T[key] = parseFloat(el.value);
+    $(label).textContent = fmt(T[key], digits);
+    renderVerdict();
+  });
+}
+
+$("chips").innerHTML = PRESETS.map((p,i)=>
+  `<button class="chip ${p.tricky?"tricky":""}" data-i="${i}">${p.title.length>52?p.title.slice(0,52)+"…":p.title}<span class="tag">${p.tag}</span></button>`
+).join("");
+$("chips").addEventListener("click", e => {
+  const chip = e.target.closest(".chip"); if (!chip) return;
+  const p = PRESETS[chip.dataset.i];
+  $("input").value = p.description;
+  $("input").dataset.title = p.title;
+  judge();
+});
+$("input").addEventListener("input", () => { delete $("input").dataset.title; });
+$("judge-btn").addEventListener("click", judge);
+$("race-btn").addEventListener("click", race);
+$("batch-btn").addEventListener("click", runBatch);
+$("clear-btn").addEventListener("click", () => {
+  session = []; current = null; llmReference = null;
+  $("result").classList.add("hidden"); $("lanes").classList.add("hidden");
+  $("race-note").classList.add("hidden"); $("funnel").classList.add("hidden");
+  $("dots").innerHTML = ""; $("input").value = "";
+  $("verdict-pill").textContent = "NO ITEM YET"; $("verdict-pill").className = "pill-big discard";
+  $("verdict-why").textContent = "Ask Jev something above and this will explain, in words, exactly why it lives or dies.";
+  $("st-saved").textContent = "—";
+  renderColumns(); renderLedger();
+});
+
+const es = new EventSource("/api/stream");
+es.onmessage = ev => {
+  const {event, payload} = JSON.parse(ev.data);
+  if (event === "item") onBatchItem(payload);
+  else if (event === "done") onBatchDone(payload);
+  else if (event === "item_error") $("batch-err").textContent = payload.error;
+};
+
+fetch("/api/status").then(r=>r.json()).then(s => {
+  T = {
+    relevance: s.gate_defaults.relevance,
+    confidence: s.gate_defaults.confidence,
+    new_entrant: s.gate_defaults.new_entrant,
+    new_entrant_relevance: s.gate_defaults.new_entrant_relevance,
+  };
+  bindSlider("s-rel","relevance","v-rel",2);
+  bindSlider("s-conf","confidence","v-conf",2);
+  bindSlider("s-noul","new_entrant","v-noul",2);
+  bindSlider("s-nrel","new_entrant_relevance","v-nrel",2);
+  renderVerdict();
+
+  const live = s.triage_provider === "typesafe";
+  $("keyrow").innerHTML = `
+    <span class="pill ${live?"live":"mock"}">${live ? "LIVE — real Jev API" : "MOCK — keyword heuristic, no key set"}</span>
+    <span class="pill">gate thresholds loaded from gate.py</span>
+    <span class="pill">${s.has_anthropic_key ? "LLM race available" : "no ANTHROPIC_API_KEY — race disabled"}</span>`;
+  $("race-model").textContent = s.claude_model;
+  $("jev-model").textContent = live ? "system one · jev-latest" : "mock heuristic";
+  if (!s.has_anthropic_key) $("race-btn").disabled = true;
+  $("batch-btn").textContent = `Judge ${BATCH_ITEMS.length} signals at once`;
+});
+</script>
+</body>
+</html>
