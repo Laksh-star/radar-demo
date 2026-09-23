@@ -97,6 +97,12 @@ Four things you can do with your hands:
    fire with your thumb.
 
    ![The distributions driving the gate](screenshots/playground-distribution-gate.png)
+
+   Five seconds of it, since a still can't show the part that matters —
+   dragging the high-priority tail bar past this item's tail, and watching
+   the verdict fall through to the confidence floor that used to decide it:
+
+   ![Dragging the tail bar flips the verdict](screenshots/playground-gate-drag.gif)
 3. **Race a full LLM** — the same three questions go to Jev and to Sonnet at
    the same moment, asked for identical JSON. Both lanes show their answer,
    their latency and their token usage. Measured runs came in at 3.8–5.3×
