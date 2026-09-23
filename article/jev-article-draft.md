@@ -24,12 +24,14 @@ That structure is genuinely useful, and it's not just marketing description — 
 
 I ran the pipeline against a fixed, reproducible batch of 9 items — real Jev calls, not mocked — and logged everything: per-item latency, category, scores, the works.
 
-- **9 real Jev calls.** Latency: 831.6ms–927.8ms, mean 884.2ms, median 894.0ms.
+- **9 real Jev calls, against build `jev-1.13.0`.** Latency: 384.6ms–511.6ms, mean 456.5ms, median 451.4ms. Cost: 4,006 input and 819 output tokens across the nine.
 - **2 of 9 items escalated.** The gate filtered out 78% of items before either expensive downstream stage — deep dive or generation — ever ran on them.
 
 ![From 10 items to 2 escalations](screenshots/chart-filter-funnel.png)
 
-One honest note here: Jev's own materials cite 70–500ms response times. What I measured — consistently, across every run — was 830–950ms. That's still comfortably sub-second and it's still doing real work fast, but it's not the number on the page, and I'd rather say that plainly than quietly round it down. Some of that gap is almost certainly network/HTTP overhead from a local machine rather than model inference time, but I didn't verify that split, so I'm not claiming it.
+One honest note here, and it got more interesting the second time I ran it. Jev's own materials cite 70–500ms response times. My first benchmark run measured 831.6ms–927.8ms — consistently, across every call, clearly outside that band — and I wrote it up that way. When I re-ran the identical benchmark eight hours later — same machine, same fixed input set, late evening to early morning — I got 384.6ms–511.6ms. Roughly half, and inside the published band except for the slowest call, which is 2% over.
+
+I can't tell you what changed, and that's the part worth passing on. The first run didn't record which model build answered it, so I can't even rule a build change in or out — and over an eight-hour gap that ran through the small hours, load and network path are at least as likely as anything about the model. The API returns the resolved build and the token usage on every single call, and I was parsing both off and throwing them away. A benchmark that can't say what it measured can't explain its own results later. The demo records both now — the first number is stuck being an anecdote, and the second one won't be.
 
 ## The gap I found, and fixed
 
