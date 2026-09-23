@@ -102,10 +102,16 @@ def _judge(provider: triage.TriageProvider, title: str, description: str) -> dic
     started = time.perf_counter()
     result = provider.triage(raw)
     latency_ms = (time.perf_counter() - started) * 1000
+    decision = gate.decide(result)
     return {
         "judgment": _judgment_dict(result),
         "latency_ms": latency_ms,
-        "escalate": gate.should_escalate(result),
+        "escalate": decision.escalate,
+        # the server's own verdict at gate.py's real thresholds. The page
+        # recomputes it client-side as you drag the sliders — this is what it
+        # should agree with when the sliders are left at their defaults.
+        "reason": decision.reason,
+        "detail": decision.detail,
     }
 
 
@@ -142,6 +148,8 @@ def api_status():
                 "confidence": gate.CONFIDENCE_THRESHOLD,
                 "new_entrant": gate.NEW_ENTRANT_THRESHOLD,
                 "new_entrant_relevance": gate.NEW_ENTRANT_RELEVANCE_THRESHOLD,
+                "unrelated_veto": gate.UNRELATED_VETO_THRESHOLD,
+                "high_priority_tail": gate.HIGH_PRIORITY_TAIL_THRESHOLD,
             },
         }
     )

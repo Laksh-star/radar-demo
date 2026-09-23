@@ -106,6 +106,15 @@
   .drow.top .dlabel{color:var(--ink);font-weight:600;}
   .drow.top .dpct{color:var(--accent);font-weight:600;}
   .drow.top .dbar > span{background:var(--accent);opacity:1;}
+  .drow .dtag{font:9px 'IBM Plex Mono',monospace;font-weight:600;letter-spacing:.05em;padding:1px 5px;border-radius:20px;margin-left:6px;}
+  .drow.veto .dlabel{color:var(--drop);font-weight:600;}
+  .drow.veto .dpct{color:var(--drop);font-weight:600;}
+  .drow.veto .dbar > span{background:var(--drop);opacity:1;}
+  .drow.veto .dtag{background:var(--drop-soft);color:var(--drop);}
+  .drow.tail .dlabel{color:var(--keep);font-weight:600;}
+  .drow.tail .dpct{color:var(--keep);font-weight:600;}
+  .drow.tail .dbar > span{background:var(--keep);opacity:1;}
+  .drow.tail .dtag{background:var(--keep-soft);color:var(--keep);}
   .dnone{font-size:11px;color:var(--muted);line-height:1.45;}
   .usage{margin-top:10px;font:10.5px 'IBM Plex Mono',monospace;color:var(--muted);}
 
@@ -128,6 +137,10 @@
   .verdict .pill-big.discard{background:var(--drop-soft);color:var(--drop);}
   .verdict .why{font-size:13px;line-height:1.6;color:var(--ink);margin:12px 0 0;}
   .verdict .why b{color:var(--accent);}
+  .veto-flag{display:inline-block;margin-top:10px;font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.05em;
+    padding:3px 8px;border-radius:20px;background:var(--drop-soft);color:var(--drop);}
+  .tail-flag{display:inline-block;margin-top:10px;font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.05em;
+    padding:3px 8px;border-radius:20px;background:var(--keep-soft);color:var(--keep);}
   .noul-flag{display:inline-block;margin-top:10px;font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.05em;
     padding:3px 8px;border-radius:20px;background:var(--warn-soft);color:var(--warn);}
 
@@ -264,7 +277,8 @@
     <p class="sec-sub">
       This is the part a table can't show you. The judgment above is fixed — no new calls are
       being made. All that changes is where you put the bars. Watch the verdict, and watch
-      items jump columns as you drag.
+      items jump columns as you drag. Two of these six bars read the <em>distributions</em>
+      rather than the winning answers, and the rows they act on light up in the cards above.
     </p>
     <div class="gate-grid">
       <div>
@@ -277,6 +291,19 @@
           <div class="lbl"><span>Confidence floor</span><span class="v" id="v-conf">0.60</span></div>
           <input type="range" id="s-conf" min="0" max="1" step="0.01">
           <div class="hint">Below this, Jev is telling you it isn't sure — so nothing is spent either way.</div>
+        </div>
+        <div class="slider">
+          <div class="lbl"><span>Unrelated veto — P(unrelated)</span><span class="v" id="v-veto">0.50</span></div>
+          <input type="range" id="s-veto" min="0" max="1" step="0.01">
+          <div class="hint">Choice and Score are answered in isolation, so they can disagree. Above this much
+            belief on "unrelated", the category question overrules a passing relevance score. Push it to 1.00
+            to switch the veto off.</div>
+        </div>
+        <div class="slider">
+          <div class="lbl"><span>High-priority tail — P(top level)</span><span class="v" id="v-tail">0.25</span></div>
+          <input type="range" id="s-tail" min="0" max="1" step="0.01">
+          <div class="hint">The score is an average, and an average hides a split belief. This much mass on
+            "high priority" escalates on its own, whatever the mean says.</div>
         </div>
         <div class="slider">
           <div class="lbl"><span>Noul bar — "genuinely new"</span><span class="v" id="v-noul">0.70</span></div>
@@ -335,12 +362,12 @@
   <section>
     <div class="sec-head"><span class="sec-num">04</span><h2>Fire the whole morning's feed at it</h2></div>
     <p class="sec-sub">
-      Ten real signals from the demo's sample set, judged concurrently. Each tile flips the
-      moment its own call returns. What you're watching is the filter that decides how much
-      of your expensive stage ever runs.
+      Every sample signal judged concurrently. Each tile flips the moment its own call returns.
+      What you're watching is the filter that decides how much of your expensive stage ever runs —
+      and the tile colours are the gate's verdict, so the two distribution rules are visible here too.
     </p>
     <div class="actions">
-      <button id="batch-btn">Judge 10 signals at once</button>
+      <button id="batch-btn">Judge every sample signal at once</button>
       <span class="err" id="batch-err"></span>
     </div>
     <div class="dots" id="dots"></div>
@@ -382,6 +409,8 @@ const PRESETS = [
    description:"2D retro game engine written in Rust, trending on GitHub this week."},
   {tag:"pure noise", title:"Ask HN: Best way to learn woodworking as a beginner?",
    description:"Discussion thread, no product or company signal."},
+  {tag:"split belief", tricky:true, title:"Stealth startup raises $40M for 'agent infrastructure'",
+   description:"A stealth-mode company raised $40M led by a top-tier fund to build infrastructure for AI agents. No product, no docs, no public API yet."},
   {tag:"repost", title:"steel-dev — cloud browser infrastructure for AI agents",
    description:"Same 'steel-dev' entity surfacing a second time today via Product Hunt — a good case for the dedup layer once it's been through the pipeline once."},
 ];
@@ -397,7 +426,8 @@ const CAT_LABEL = {
   "dev-tooling":"Dev tooling", "unrelated":"Unrelated",
 };
 
-let T = {relevance:1.0, confidence:0.6, new_entrant:0.7, new_entrant_relevance:0.7};
+let T = {relevance:1.0, confidence:0.6, new_entrant:0.7, new_entrant_relevance:0.7,
+         unrelated_veto:0.5, high_priority_tail:0.25};
 let current = null;            // {label, judgment, latency_ms}
 let session = [];              // every item judged this session
 let llmReference = null;       // measured LLM latency, only from a real race
@@ -406,29 +436,68 @@ const $ = id => document.getElementById(id);
 const fmt = (n, d=2) => Number(n).toFixed(d);
 const pct = n => Math.round(n*100) + "%";
 
-/* ---------- gate: mirrors gate.py exactly, in words ---------- */
+/* ---------- gate: mirrors gate.py's decide(), in words ----------
+   Same five rules in the same order — veto, tail, confidence floor, Noul,
+   relevance bar. It runs here rather than on the server
+   so dragging a slider is instant — but that means this and gate.py have to
+   be changed together. The server sends its own verdict with every judgment
+   (payload.reason), which is what this should agree with at the defaults. */
+const pUnrelated = j => j.category_probabilities ? (j.category_probabilities["unrelated"] ?? 0) : null;
+const pHigh = j => {
+  if (!j.relevance_probabilities) return null;
+  const top = Object.keys(j.relevance_probabilities).sort((a,b) => Number(b)-Number(a))[0];
+  return j.relevance_probabilities[top];
+};
+
 function decide(j){
+  const pu = pUnrelated(j);
+  if (pu !== null && pu >= T.unrelated_veto){
+    return {escalate:false, reason:"unrelated_veto", why:
+      `Choice put <b>${pct(pu)}</b> of its belief on <b>unrelated</b>, over your <b>${pct(T.unrelated_veto)}</b>
+       veto. Score says <b>${fmt(j.relevance_score)}</b> and Choice says "not your space" — the two questions
+       were answered in isolation, so they're allowed to disagree, and the gate sides with Choice.
+       The winning label alone would never have shown you this.`};
+  }
+
+  const ph = pHigh(j);
+  if (ph !== null && ph >= T.high_priority_tail){
+    return {escalate:true, reason:"high_priority_tail", why:
+      `The mean score is <b>${fmt(j.relevance_score)}</b> at <b>${pct(j.relevance_confidence)}</b> confidence,
+       but <b>${pct(ph)}</b> of Score's belief sits on <b>high priority</b> — over your
+       <b>${pct(T.high_priority_tail)}</b> tail bar. An average flattens a split belief, and this rule sits
+       above the confidence floor on purpose: "might be big, can't tell" is the case for a cheap look,
+       not against it.`};
+  }
+
   if (j.relevance_confidence < T.confidence){
-    return {escalate:false, noul:false, why:
+    return {escalate:false, reason:"low_confidence", why:
       `Jev's own confidence in that relevance score is <b>${pct(j.relevance_confidence)}</b>, under your
        <b>${pct(T.confidence)}</b> floor. It's saying "don't trust me on this one" — so the pipeline spends
        nothing either way. That's a judgment about the judgment, and it's why the score alone was never enough.`};
   }
+
   if (j.is_new_entrant >= T.new_entrant){
     const ok = j.relevance_score >= T.new_entrant_relevance;
     const wouldNormally = j.relevance_score >= T.relevance;
-    return {escalate:ok, noul:ok && !wouldNormally, why:
+    return {escalate:ok, reason: ok && !wouldNormally ? "new_entrant" : (ok ? "relevance" : "below_bar"), why:
       `Noul reads <b>${fmt(j.is_new_entrant)}</b> — over your <b>${fmt(T.new_entrant)}</b> bar, so this counts as a
        genuine first sighting, not a repost. New entrants only need <b>${fmt(T.new_entrant_relevance)}</b> relevance
        instead of <b>${fmt(T.relevance)}</b>, and this scored <b>${fmt(j.relevance_score)}</b> — ${ok ? "it clears" : "still short"}.
        ${ok && !wouldNormally ? "Under the normal bar this would have been thrown away." : ""}`};
   }
+
   const ok = j.relevance_score >= T.relevance;
-  return {escalate:ok, noul:false, why:
+  return {escalate:ok, reason: ok ? "relevance" : "below_bar", why:
     `Noul reads <b>${fmt(j.is_new_entrant)}</b>, under your <b>${fmt(T.new_entrant)}</b> bar — so this is treated as
      something you've likely seen before, and it has to clear the full <b>${fmt(T.relevance)}</b> relevance bar on its
      own merit. It scored <b>${fmt(j.relevance_score)}</b>, so ${ok ? "in it goes" : "it stops here"}.`};
 }
+
+const REASON_FLAG = {
+  new_entrant: ["noul-flag", "NOUL OVERRIDE — Jev's third answer is what saved this one"],
+  unrelated_veto: ["veto-flag", "UNRELATED VETO — the distribution killed it, not the label"],
+  high_priority_tail: ["tail-flag", "TAIL ESCALATION — the mean said no, the distribution said look"],
+};
 
 /* ---------- rendering ---------- */
 function renderJudgment(){
@@ -441,19 +510,7 @@ function renderJudgment(){
   ring.style.setProperty("--p", j.category_confidence*100);
   ring.dataset.label = pct(j.category_confidence);
 
-  renderDist($("cat-dist"), "probability per option",
-    j.category_probabilities
-      ? Object.entries(j.category_probabilities)
-          .map(([k,v]) => [CAT_LABEL[k] || k, v])
-          .sort((a,b) => b[1]-a[1])
-      : null);
-
-  renderDist($("score-dist"), "probability per level",
-    j.relevance_probabilities
-      ? Object.entries(j.relevance_probabilities)
-          .sort((a,b) => Number(a[0])-Number(b[0]))
-          .map(([k,v]) => [(j.relevance_legend && j.relevance_legend[k]) || ("level " + k), v])
-      : null);
+  renderDists();
 
   $("usage-val").textContent = j.input_tokens != null
     ? `${j.model_version} · ${j.input_tokens} in / ${j.output_tokens} out tokens`
@@ -484,12 +541,39 @@ function renderDist(el, heading, entries){
     return;
   }
   const top = Math.max(...entries.map(e => e[1]));
-  el.innerHTML = `<div class="dhead">${heading}</div>` + entries.map(([label, p]) => `
-    <div class="drow ${p === top ? "top" : ""}">
-      <span class="dlabel">${label}</span>
+  el.innerHTML = `<div class="dhead">${heading}</div>` + entries.map(([label, p, flag]) => `
+    <div class="drow ${flag ? flag : (p === top ? "top" : "")}">
+      <span class="dlabel">${label}${flag ? `<span class="dtag">${flag === "veto" ? "VETO" : "TAIL"}</span>` : ""}</span>
       <span class="dpct">${(p*100).toFixed(0)}%</span>
       <span class="dbar"><span style="width:${p*100}%"></span></span>
     </div>`).join("");
+}
+
+/* Redrawn on every slider move, so the row a rule is acting on lights up
+   the instant its threshold crosses it — the distributions and the gate are
+   the same picture, not two panels that happen to sit near each other. */
+function renderDists(){
+  if (!current) return;
+  const j = current.judgment;
+  const pu = pUnrelated(j), ph = pHigh(j);
+
+  renderDist($("cat-dist"), "probability per option",
+    j.category_probabilities
+      ? Object.entries(j.category_probabilities)
+          .map(([k,v]) => [CAT_LABEL[k] || k, v,
+            (k === "unrelated" && pu !== null && pu >= T.unrelated_veto) ? "veto" : null])
+          .sort((a,b) => b[1]-a[1])
+      : null);
+
+  const levelKeys = j.relevance_probabilities
+    ? Object.keys(j.relevance_probabilities).sort((a,b) => Number(a)-Number(b)) : [];
+  const topKey = levelKeys[levelKeys.length-1];
+  renderDist($("score-dist"), "probability per level",
+    j.relevance_probabilities
+      ? levelKeys.map(k => [(j.relevance_legend && j.relevance_legend[k]) || ("level " + k),
+          j.relevance_probabilities[k],
+          (k === topKey && ph !== null && ph >= T.high_priority_tail) ? "tail" : null])
+      : null);
 }
 
 function renderVerdict(){
@@ -505,7 +589,9 @@ function renderVerdict(){
   const pill = $("verdict-pill");
   pill.textContent = d.escalate ? "ESCALATE" : "DISCARD";
   pill.className = "pill-big " + (d.escalate ? "escalate" : "discard");
-  $("verdict-why").innerHTML = d.why + (d.noul ? `<br><span class="noul-flag">NOUL OVERRIDE — Jev's third answer is what saved this one</span>` : "");
+  const flag = REASON_FLAG[d.reason];
+  $("verdict-why").innerHTML = d.why + (flag ? `<br><span class="${flag[0]}">${flag[1]}</span>` : "");
+  renderDists();
   renderColumns();
   renderLedger();
 }
@@ -642,8 +728,8 @@ async function runBatch(){
     const r = await fetch("/api/batch", {method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({items: BATCH_ITEMS})});
     const data = await r.json();
-    if (!data.ok){ $("batch-err").textContent = data.error; btn.disabled=false; btn.textContent="Judge 10 signals at once"; }
-  } catch(e){ $("batch-err").textContent = String(e); btn.disabled=false; btn.textContent="Judge 10 signals at once"; }
+    if (!data.ok){ $("batch-err").textContent = data.error; btn.disabled=false; btn.textContent=`Judge all ${BATCH_ITEMS.length} at once`; }
+  } catch(e){ $("batch-err").textContent = String(e); btn.disabled=false; btn.textContent=`Judge all ${BATCH_ITEMS.length} at once`; }
 }
 
 function onBatchItem(p){
@@ -656,7 +742,7 @@ function onBatchItem(p){
 }
 
 function onBatchDone(p){
-  const btn = $("batch-btn"); btn.disabled = false; btn.textContent = "Judge 10 signals again";
+  const btn = $("batch-btn"); btn.disabled = false; btn.textContent = `Judge all ${BATCH_ITEMS.length} again`;
   const res = batchState.results;
   const kept = res.filter(r => decide(r.judgment).escalate).length;
   const sumLat = res.reduce((s,r)=>s+r.latency_ms,0);
@@ -728,9 +814,13 @@ fetch("/api/status").then(r=>r.json()).then(s => {
     confidence: s.gate_defaults.confidence,
     new_entrant: s.gate_defaults.new_entrant,
     new_entrant_relevance: s.gate_defaults.new_entrant_relevance,
+    unrelated_veto: s.gate_defaults.unrelated_veto,
+    high_priority_tail: s.gate_defaults.high_priority_tail,
   };
   bindSlider("s-rel","relevance","v-rel",2);
   bindSlider("s-conf","confidence","v-conf",2);
+  bindSlider("s-veto","unrelated_veto","v-veto",2);
+  bindSlider("s-tail","high_priority_tail","v-tail",2);
   bindSlider("s-noul","new_entrant","v-noul",2);
   bindSlider("s-nrel","new_entrant_relevance","v-nrel",2);
   renderVerdict();
@@ -743,7 +833,7 @@ fetch("/api/status").then(r=>r.json()).then(s => {
   $("race-model").textContent = s.claude_model;
   $("jev-model").textContent = live ? "system one · jev-latest" : "mock heuristic";
   if (!s.has_anthropic_key) $("race-btn").disabled = true;
-  $("batch-btn").textContent = `Judge ${BATCH_ITEMS.length} signals at once`;
+  $("batch-btn").textContent = `Judge all ${BATCH_ITEMS.length} signals at once`;
 });
 </script>
 </body>

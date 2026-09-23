@@ -86,13 +86,17 @@ Four things you can do with your hands:
    distributions are the part worth staring at: a 0.99/0.01 split and a
    0.51/0.49 split both render as one confident-looking label until you see
    the shape behind them.
-2. **Move the gate** — four sliders for the thresholds in `gate.py`
-   (they're loaded from it at page load, not hardcoded in the page). The
-   judgment stays fixed; no new calls are made. Only the bars move, and the
-   verdict flips under your hand with a plain-English sentence saying
-   exactly which of the three answers decided it. Drag the Noul bar below an
-   item's Noul score and you can watch the **NOUL OVERRIDE** fire in real
-   time — the mechanism `gate.py` describes, made tactile.
+2. **Move the gate** — six sliders for the thresholds in `gate.py` (loaded
+   from it at page load, not hardcoded in the page). The judgment stays
+   fixed; no new calls are made. Only the bars move, and the verdict flips
+   under your hand with a plain-English sentence naming the rule that
+   decided it. Two of the six read the distributions rather than the winning
+   answers, and the distribution row a rule is acting on lights up in the
+   cards above as its threshold crosses it — so **NOUL OVERRIDE**,
+   **UNRELATED VETO** and **TAIL ESCALATION** are all things you can make
+   fire with your thumb.
+
+   ![The distributions driving the gate](screenshots/playground-distribution-gate.png)
 3. **Race a full LLM** — the same three questions go to Jev and to Sonnet at
    the same moment, asked for identical JSON. Both lanes show their answer,
    their latency and their token usage. Measured runs came in at 3.8–5.3×
@@ -149,7 +153,8 @@ python3 benchmark/run_benchmark.py   # needs TYPESAFE_API_KEY + ANTHROPIC_API_KE
 | `models.py` | real | the `RawSignal` / `TriageResult` / `Signal` Pydantic contracts |
 | `extract.py` | real | pluggable `ExtractionProvider` interface — `BrowserUseExtract` runs a real browser-use `Agent` against Hacker News / GitHub Trending (Product Hunt excluded, see below), `MockExtract` returns the canned `sample_sources.py` batch (all 3 sources) |
 | `triage.py` | real | pluggable `TriageProvider` interface — `TypeSafeTriage` makes the real `/v1/systemone` call and keeps the *whole* response (answers, per-option and per-level probability distributions, level legend, token usage, resolved model build), `MockTriage` is the original keyword heuristic kept as a no-key fallback |
-| `gate.py` | real | threshold logic using all three of Jev's judgments — a confident new entrant (Noul) clears the gate at a lower relevance bar than a repost or known name would; see below |
+| `gate.py` | real | five ordered rules over Jev's three answers *and* the two distributions behind them — returns the reason, not just a boolean; see below |
+| `test_gate.py` | real | boundary tests for every gate threshold and both ordering decisions — no pytest, no key, no network |
 | `store.py` | real | SQLite-backed dedup table + persistence — stands in for your `create_brief` / `get_trending_competitors` tools |
 | `deep_dive.py` | real | pluggable `DeepDiveProvider` interface — `BrowserUseDeepDive` opens each escalated item's own url and summarizes what's actually there, `MockDeepDive` passes the stage-1 description straight through |
 | `generate.py` | real | pluggable `GenerateProvider` interface — `ClaudeGenerate` calls the Anthropic API using stage 5's enriched detail, `MockGenerate` is the original templated placeholder kept as a no-key fallback |
@@ -163,29 +168,70 @@ concrete facts instead of just the stage-1 blurb. Every real integration
 either runs for real when its key is set, or falls back to a free, keyless
 mock so the pipeline always completes.
 
-### The gate uses all three of Jev's judgments, not just Score
+### The gate reads the distributions, not just the winning answers
 
 Jev returns three answers per item — Choice (category), Score (relevance),
-and Noul (confidence this is a genuinely new entrant, not a repost). The
-gate originally only checked Score and its confidence; Noul was requested,
-displayed, and persisted, but never changed a decision, which undersold
-what Jev actually does. Now:
+Noul (is this genuinely new) — and, alongside each one, the probability
+distribution it came from. The gate has been through two rounds of the same
+mistake: first Noul was requested, displayed and persisted but never changed
+a decision; then the distributions were captured but only drawn. Both are
+now load-bearing. `gate.decide()` applies five rules in order:
 
 ```python
-# gate.py
-if triage.relevance_confidence < CONFIDENCE_THRESHOLD:
-    return False
-if triage.is_new_entrant >= NEW_ENTRANT_THRESHOLD:      # confident new entrant
-    return triage.relevance_score >= NEW_ENTRANT_RELEVANCE_THRESHOLD  # lower bar: 0.7
-return triage.relevance_score >= RELEVANCE_THRESHOLD    # normal bar: 1.0
+# gate.py — abridged; each rule also returns a sentence explaining itself
+if p_unrelated >= UNRELATED_VETO_THRESHOLD:            # 0.50
+    return DISCARD   # Choice disagrees with Score — side with Choice
+if p_high >= HIGH_PRIORITY_TAIL_THRESHOLD:             # 0.25
+    return ESCALATE  # fat tail on "high priority", whatever the mean says
+if relevance_confidence < CONFIDENCE_THRESHOLD:        # 0.60
+    return DISCARD   # Jev says don't trust this answer
+if is_new_entrant >= NEW_ENTRANT_THRESHOLD:            # 0.70
+    return relevance_score >= NEW_ENTRANT_RELEVANCE_THRESHOLD   # lower bar: 0.7
+return relevance_score >= RELEVANCE_THRESHOLD          # normal bar: 1.0
 ```
 
-A confident first-sighting of a genuinely new competitor is exactly the
-kind of thing worth catching before it's built up the same relevance a
-familiar name would need — so it escalates at 0.7 instead of 1.0. When this
-is the deciding factor, the dashboard tags that item's Noul score with a
-**NEW→ESCALATED** badge, and the CLI trace prints a `NOUL OVERRIDE` line —
-so the fact that Noul changed an outcome is visible, not just logged.
+**The unrelated veto.** TypeSafe's docs say every question in a call is
+evaluated "in parallel and in isolation" — which means they can disagree,
+and a winning label per question hides it. An item can score 0.88 relevance
+while Choice puts 87% of its belief on *unrelated*. Escalating that means
+paying for one question's opinion and ignoring the other's, so the veto
+discards it. On a real run over the sample set this fires on four items.
+
+**The high-priority tail.** `relevance_score` is an expectation, and an
+expectation flattens a split belief: 0.45 Noise / 0.10 Worth / 0.45 High
+priority averages to about the same number as a confident "worth tracking"
+and means something completely different. So enough mass on the top level
+escalates on its own.
+
+**Why the tail sits above the confidence floor.** It was written below it
+first, and that made it very nearly dead code. Measured against realistic
+headlines — "stealth startup raises $40M for agent infrastructure", "browser
+vendor ships a native agent API" — the items with a fat high-priority tail
+are almost exactly the items Jev is least confident about: five test signals
+came back at 0.28–0.52 confidence with 0.31–0.62 of their belief on the top
+level, and the floor killed every one before the tail was consulted. But
+"this might be significant and the model can't tell" is the case for
+spending a cheap look, not against it. Moving the rule up changed the
+composition of what escalates without changing the volume: the sample set
+still filters 7 of 9.
+
+Every rule that isn't "the score cleared the bar" is visible rather than
+logged: `gate.decide()` returns the reason and a sentence, the CLI trace
+prints `NOUL OVERRIDE` / `UNRELATED VETO` / `TAIL ESCALATION` lines, the
+dashboard badges the responsible cell, and the playground names the rule and
+lights up the exact distribution row that triggered it.
+
+**Anything Jev doesn't supply is skipped, not guessed.** `MockTriage`
+returns no distributions, so rules 1 and 2 never fire and the gate behaves
+exactly as it did before they existed — the all-mock pipeline output is
+unchanged, byte for byte.
+
+`test_gate.py` covers all of it — every threshold at, just under and just
+over, plus the two ordering decisions:
+
+```
+python3 test_gate.py    # no pytest, no API key, no network
+```
 
 ### Extract provider selection
 
@@ -292,8 +338,8 @@ partly, ❌ = not.
 | **Score** — rate against ordered levels | ⚠️ | the number drives the gate, but the gate is binary — "Worth tracking" and "High priority" still behave identically |
 | **Noul** — probability a statement is true | ✅ | `gate.py` escalates confident new entrants at a lower bar; the playground makes the override fire on a slider drag |
 | Confidence, separate from the answer | ✅ | `gate.py`'s confidence floor — one sample item scores 1.23 relevance and is still discarded at 0.59 confidence |
-| Per-option probabilities (Choice) | ✅ | captured in `TriageResult`, drawn in the playground |
-| Per-level probabilities + legend (Score) | ✅ | same |
+| Per-option probabilities (Choice) | ✅ | captured, drawn, **and gating** — the unrelated veto in `gate.py` |
+| Per-level probabilities + legend (Score) | ✅ | same — the high-priority tail rule |
 | `usage` token counts | ✅ | per call in the playground, aggregated in the benchmark |
 | Resolved model build | ✅ | `jev-1.13.0` recorded rather than the `jev-latest` alias requested |
 | Several questions per call, evaluated in parallel | ✅ | 3 per call — the efficiency the architecture is built on |

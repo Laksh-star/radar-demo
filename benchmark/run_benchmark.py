@@ -74,6 +74,10 @@ def main() -> None:
             "output_mean": statistics.mean(output_tokens) if output_tokens else None,
             "calls_reporting_usage": len(input_tokens),
         },
+        "gate_reason_counts": {
+            reason: sum(1 for p in gate_items if p.get("reason") == reason)
+            for reason in sorted({p.get("reason") for p in gate_items if p.get("reason")})
+        },
         "noul_override_count": len(noul_overrides),
         "noul_overrides": noul_overrides,
         "triage_items": triage_items,
