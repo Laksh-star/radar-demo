@@ -81,9 +81,9 @@ That is not a coincidence, and it is the whole point: **the items with a split b
 
 On the benchmark run, the gate outcomes break down as: four discards by the unrelated veto, three below the relevance bar, one escalation on the bar, and one on the tail. That last one is Cloudflare Workers AI — relevance 1.27 at 52% confidence, with 30% of its belief on high priority. The gate as it stood one commit earlier discarded it on the confidence floor. The filter ratio didn't move at all: still 2 of 9, still 78%. What changed was *which* two.
 
-It is also, finally, something you can put your hands on. The playground I built for this exposes every threshold as a slider, and the distribution row a rule is acting on lights up the moment its bar crosses it — so you can watch the veto kill an item, or drag the tail bar past 30% and watch Cloudflare fall back out.
+It is also, finally, something you can put your hands on. The playground I built for this exposes every threshold as a slider, and the distribution row a rule is acting on lights up the moment its bar crosses it. Below, a signal Jev scored 1.33 on but was only 44% confident about, with 35% of its belief on *high priority*. While the tail bar sits under that 35%, the distribution escalates it. Drag the bar above it and the rule stops applying — the verdict drops through to the confidence floor that used to decide it, and the item changes columns. No new calls are made. Only the bar moves.
 
-![The tail rule firing in the playground](screenshots/playground-distribution-gate.png)
+![Dragging the tail bar past a signal's own tail: the verdict falls through to the confidence floor beneath it](screenshots/playground-gate-drag.gif)
 
 ## Proof, not a promise: a real run against the live API
 
