@@ -4,7 +4,7 @@ There's a specific kind of AI demo I've stopped trusting: the one where every sc
 
 This is what happened, including the parts that didn't go the way the marketing copy implied.
 
-![Architecture: extract, validate, dedup, triage, gate, deep dive, generate, persist, deliver](screenshots/architecture-diagram.png)
+![Everything before the gate is cheap. Everything after it isn't — and that asymmetry is the only reason a model like Jev has a job here.](screenshots/architecture-diagram.png)
 
 ## The premise: a competitive-intelligence radar
 
@@ -16,7 +16,7 @@ I built every stage for real. No stubbed responses, no "imagine this called an A
 
 One call, three answers. Choice (which category this falls into), Score (0–2, how relevant), and Noul (confidence this is a genuinely new competitor, not a repost) — each with its own confidence score, back in under a second.
 
-![Jev's Choice/Score/Noul columns, live](screenshots/dashboard-full-run.png)
+![Three answers per item from a single call, landing live as the run works through its queue.](screenshots/dashboard-full-run.png)
 
 That structure is genuinely useful, and it's not just marketing description — I built a UI specifically to stream these three numbers live as they come back, because watching them arrive one item at a time is the fastest way to understand what the model is doing that a single text description isn't.
 
@@ -27,7 +27,7 @@ I ran the pipeline against a fixed, reproducible batch of 9 items — real Jev c
 - **9 real Jev calls, against build `jev-1.13.0`.** Latency: 384.6ms–511.6ms, mean 456.5ms, median 451.4ms. Cost: 4,006 input and 819 output tokens across the nine.
 - **2 of 9 items escalated.** The gate filtered out 78% of items before either expensive downstream stage — deep dive or generation — ever ran on them.
 
-![From 10 items to 2 escalations](screenshots/chart-filter-funnel.png)
+![Nine real Jev calls. The two survivors are the only items that went on to cost anything.](screenshots/chart-filter-funnel.png)
 
 One honest note here, and it got more interesting the second time I ran it. Jev's own materials cite 70–500ms response times. My first benchmark run measured 831.6ms–927.8ms — consistently, across every call, clearly outside that band — and I wrote it up that way. When I re-ran the identical benchmark eight hours later — same machine, same fixed input set, late evening to early morning — I got 384.6ms–511.6ms. Roughly half, and inside the published band except for the slowest call, which is 2% over.
 
@@ -37,7 +37,7 @@ I can't tell you what changed, and that's the part worth passing on. The first r
 
 Here's the part I didn't expect going in. Noul — the "is this a genuinely new competitor" signal — was being returned by every single call. It was displayed in the dashboard. It was written to the database. And it was doing *nothing*. My original gate logic only checked Score and its confidence. A confident first-sighting of a brand-new competitor and a fourth repost of something everyone already tracks were being treated identically, as long as their relevance score matched.
 
-![Noul went from decorative to load-bearing](screenshots/diagram-noul-before-after.png)
+![The field was returned, displayed and written to the database from the first run. Nothing ever read it.](screenshots/diagram-noul-before-after.png)
 
 I fixed it: a confident new entrant (Noul ≥ 0.7) now clears the gate at a relevance score of 0.7 instead of the normal 1.0. The reasoning is straightforward — catching a genuinely new competitor early is worth surfacing before it's built up the same conventional relevance a familiar name would need. I verified this with five direct boundary-condition tests and one forced end-to-end run before trusting it, and the dashboard now tags any item that escalates *because* of this rule with a visible badge, so the effect is never invisible.
 
@@ -65,11 +65,11 @@ The token counts and the model build are the dull ones, and they cost me somethi
 
 **A confidence score and a probability distribution are not the same thing.** Jev's docs are explicit that confidence is a separate axis from probability, and once you can see both, the difference has teeth. A 0.99/0.01 split across options and a 0.51/0.49 split both arrive as one confident-looking winning label. Worse, on the Score question the number itself is an expectation — and an expectation flattens a split belief. A model that thinks an item is 45% noise and 45% high priority reports almost the same score as one that is calmly certain it is worth tracking.
 
-![Both said worth tracking; only one meant it](screenshots/chart-score-distribution.png)
+![Real numbers from one benchmark run against jev-1.13.0. The mean cannot tell these two apart.](screenshots/chart-score-distribution.png)
 
 So I wrote two gate rules that read distributions instead of labels. Both lean on one line in TypeSafe's docs: every question in a call is evaluated *in parallel and in isolation*. Independent questions can disagree — and the winning label is exactly where that disagreement goes to hide.
 
-![Two decisions that need the distribution](screenshots/diagram-distribution-rules.png)
+![pixel-forge and Cloudflare Workers AI — both real items, both from the same nine calls.](screenshots/diagram-distribution-rules.png)
 
 The first is an **unrelated veto**: when Choice puts most of its belief on "not your space", that overrules a relevance score that squeaked over the bar. The second is a **high-priority tail**: enough probability mass on the top level escalates an item on its own, whatever the mean says.
 
@@ -83,11 +83,11 @@ On the benchmark run, the gate outcomes break down as: four discards by the unre
 
 It is also, finally, something you can put your hands on. The playground I built for this exposes every threshold as a slider, and the distribution row a rule is acting on lights up the moment its bar crosses it. Below, a signal Jev scored 1.33 on but was only 44% confident about, with 35% of its belief on *high priority*. While the tail bar sits under that 35%, the distribution escalates it. Drag the bar above it and the rule stops applying — the verdict drops through to the confidence floor that used to decide it, and the item changes columns. No new calls are made. Only the bar moves.
 
-![Dragging the tail bar past a signal's own tail: the verdict falls through to the confidence floor beneath it](screenshots/playground-gate-drag.gif)
+![Drag the bar above the item's own tail and the rule stops applying. No new calls are made — only the bar moves.](screenshots/playground-gate-drag.gif)
 
 ## Proof, not a promise: a real run against the live API
 
-![A real run: real Jev, real deep dive, real Claude generation](screenshots/dashboard-real-jev-run.png)
+![One run, nothing mocked: real Jev triage, a real browser agent reading the pages, real Claude writing the briefs.](screenshots/dashboard-real-jev-run.png)
 
 That run's deep-dive stage — a browser agent reading the escalated items' own pages — pulled two claims directly off TypeSafe's own blog post, not written by me and not invented by the model:
 
