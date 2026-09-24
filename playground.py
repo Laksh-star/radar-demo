@@ -228,7 +228,9 @@ def _claude_judge(title: str, description: str) -> dict:
     )
     latency_ms = (time.perf_counter() - started) * 1000
 
-    text = response.content[0].text.strip()
+    # content[0] isn't necessarily the answer: a thinking block can come first,
+    # and it has no .text at all. Take the first actual text block.
+    text = next((b.text for b in response.content if getattr(b, "type", None) == "text"), "").strip()
     match = re.search(r"\{.*\}", text, re.S)
     parsed = json.loads(match.group(0)) if match else {}
 

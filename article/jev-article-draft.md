@@ -14,7 +14,7 @@ I built every stage for real. No stubbed responses, no "imagine this called an A
 
 ## What Jev actually returns
 
-One call, three answers. Choice (which category this falls into), Score (0–2, how relevant), and Noul (confidence this is a genuinely new competitor, not a repost) — each with its own confidence score, back in under a second.
+One call, three answers. Choice (which category this falls into), Score (0–2, how relevant), and Noul — Jev's novelty signal, its confidence that this is a genuinely new competitor rather than something you've already seen. Each answer carries its own confidence score, and all three come back in under a second.
 
 ![Three answers per item from a single call, landing live as the run works through its queue.](screenshots/dashboard-full-run.png)
 
@@ -24,14 +24,32 @@ That structure is genuinely useful, and it's not just marketing description — 
 
 I ran the pipeline against a fixed, reproducible batch of 9 items — real Jev calls, not mocked — and logged everything: per-item latency, category, scores, the works.
 
-- **9 real Jev calls, against build `jev-1.13.0`.** Latency: 384.6ms–511.6ms, mean 456.5ms, median 451.4ms. Cost: 4,006 input and 819 output tokens across the nine.
-- **2 of 9 items escalated.** The gate filtered out 78% of items before either expensive downstream stage — deep dive or generation — ever ran on them.
+- **9 real Jev calls, against build `jev-1.13.0`.** Latency: 384.6ms–511.6ms, mean 456.5ms, median 451.4ms. 4,006 input and 819 output tokens across the nine — which at TypeSafe's published $0.042 per million input tokens, with output listed as free, is about **$0.00017 for the entire triage stage**. I haven't seen a bill; that's their list price applied to my token counts. But it's the number the whole architecture leans on: the judgment layer is close enough to free that filtering is never the expensive part.
+- **2 of 9 items escalated.** The gate filtered out the other seven before either expensive downstream stage — deep dive or generation — ever ran on them. That's 78%, but read it as seven of nine: the architecture diagram's ~80-item batch is what a daily run would look like, not what I measured.
 
 ![Nine real Jev calls. The two survivors are the only items that went on to cost anything.](screenshots/chart-filter-funnel.png)
 
 One honest note here, and it got more interesting the second time I ran it. Jev's own materials cite 70–500ms response times. My first benchmark run measured 831.6ms–927.8ms — consistently, across every call, clearly outside that band — and I wrote it up that way. When I re-ran the identical benchmark eight hours later — same machine, same fixed input set, late evening to early morning — I got 384.6ms–511.6ms. Roughly half, and inside the published band except for the slowest call, which is 2% over.
 
 I can't tell you what changed, and that's the part worth passing on. The first run didn't record which model build answered it, so I can't even rule a build change in or out — and over an eight-hour gap that ran through the small hours, load and network path are at least as likely as anything about the model. The API returns the resolved build and the token usage on every single call, and I was parsing both off and throwing them away. A benchmark that can't say what it measured can't explain its own results later. The demo records both now — the first number is stuck being an anecdote, and the second one won't be.
+
+A third measurement, taken later still while running the comparison below, came in at 829ms mean. So: three runs — 884ms, 456ms, 829ms — same machine, same inputs. The honest summary is that Jev *can* answer inside its published band, not that it takes 456ms. Anyone who needs a number for capacity planning should measure p50 and p95 from where their code actually runs, across more than one evening.
+
+## Speed is easy to measure. Judgment isn't.
+
+Everything above measures how fast, how cheap, and how much got filtered. None of it says the answers were *right* — and for a model whose entire pitch is calibrated decisions, that's the half that matters. I don't have gold labels for these items, and writing my own would just be my opinion with extra steps.
+
+What I could do cheaply was ask a second model the identical questions. The playground fires both at once, so I put all ten sample signals through Jev and through Claude Sonnet — same three questions, same JSON schema, same moment:
+
+- **Category agreement: 7 of 10.**
+- All three disagreements are boundary calls between adjacent *relevant* buckets: agent-framework vs dev-tooling twice, dev-tooling vs browser-automation once. Reasonable people would argue about all three.
+- On the four genuinely irrelevant items — the note-taking app, the planner, the game engine, the woodworking thread — they agreed four out of four.
+
+That last line is the one that matters here, because the gate doesn't route on category at all. It routes on relevance. Both models drew the signal/noise boundary in exactly the same place, and disagreed only about which shelf to put the signal on.
+
+One difference deserves its own sentence. Sonnet returned whole numbers — 0, 1, 2 — on almost every item. Jev returned a continuous expectation: 0.21, 0.74, 0.91, 1.23. Mean absolute difference between them, 0.37. Asked to pick a level, the generative model picks a level; asked the same question, Jev reports where the mass actually sits. That distinction turns out to be what the rest of this article is about.
+
+Agreement is not accuracy. Two models can be confidently wrong together, and Sonnet is not ground truth — this is a sanity check, not a benchmark. But it rules out the failure I was most worried about: that the speed was being bought with visibly worse judgment. It took about two minutes to run, and if you're evaluating a fast classifier for your own pipeline, it's the cheapest useful thing you can do before trusting it with a budget.
 
 ## The gap I found, and fixed
 
@@ -63,6 +81,8 @@ My `TriageResult` had fields for five of those values. Everything else — the p
 
 The token counts and the model build are the dull ones, and they cost me something concrete: my first benchmark couldn't say which model produced its numbers, which is exactly why I can't explain the latency change above. The distributions are the interesting ones.
 
+The winning number tells you where the average landed. The distribution tells you how it got there.
+
 **A confidence score and a probability distribution are not the same thing.** Jev's docs are explicit that confidence is a separate axis from probability, and once you can see both, the difference has teeth. A 0.99/0.01 split across options and a 0.51/0.49 split both arrive as one confident-looking winning label. Worse, on the Score question the number itself is an expectation — and an expectation flattens a split belief. A model that thinks an item is 45% noise and 45% high priority reports almost the same score as one that is calmly certain it is worth tracking.
 
 ![Real numbers from one benchmark run against jev-1.13.0. The mean cannot tell these two apart.](screenshots/chart-score-distribution.png)
@@ -81,6 +101,8 @@ That is not a coincidence, and it is the whole point: **the items with a split b
 
 On the benchmark run, the gate outcomes break down as: four discards by the unrelated veto, three below the relevance bar, one escalation on the bar, and one on the tail. That last one is Cloudflare Workers AI — relevance 1.27 at 52% confidence, with 30% of its belief on high priority. The gate as it stood one commit earlier discarded it on the confidence floor. The filter ratio didn't move at all: still 2 of 9, still 78%. What changed was *which* two.
 
+All of this is pinned by `test_gate.py` — every threshold at, just under and just over, plus both ordering decisions: seventeen cases needing no API key and no network. The one that earns its keep asserts that a fat tail outranks the confidence floor, because that is precisely the rule I had backwards.
+
 It is also, finally, something you can put your hands on. The playground I built for this exposes every threshold as a slider, and the distribution row a rule is acting on lights up the moment its bar crosses it. Below, a signal Jev scored 1.33 on but was only 44% confident about, with 35% of its belief on *high priority*. While the tail bar sits under that 35%, the distribution escalates it. Drag the bar above it and the rule stops applying — the verdict drops through to the confidence floor that used to decide it, and the item changes columns. No new calls are made. Only the bar moves.
 
 ![Drag the bar above the item's own tail and the rule stops applying. No new calls are made — only the bar moves.](screenshots/playground-gate-drag.gif)
@@ -97,15 +119,16 @@ Both are TypeSafe's own marketing claims, surfaced verbatim. I haven't independe
 
 ## What I'd tell you before you build on this
 
-Three honest limits, found by actually running it rather than reading the docs:
+Four honest limits, found by actually running it rather than reading the docs:
 
 1. **Bot-protected sites don't care how good your agent is.** Product Hunt sits behind a Cloudflare "verify you're human" challenge, and no amount of prompting gets a headless browser agent through it. I excluded it from live extraction entirely rather than let the agent grind at it — it's not a Jev problem, but it's a real one for anyone assuming "browser agent + LLM" means "any website."
 2. **Watch your step budgets.** The extraction agent's underlying framework defaults to a 500-step run budget. A page that traps the agent (like the Cloudflare wall did, briefly, before I excluded it) could burn hundreds of real LLM calls before giving up. I capped it at 15 steps per source. If you're wiring up something similar, check this before your first real run, not after your first surprising bill.
-3. **The architecture generalizes further than the specifics do.** The "cheap filter → gate → expensive stage only on survivors" shape applies to a lot of problems — lead scoring, ticket triage, moderation queues, research screening. The categories, the gate thresholds, and Jev's specific question criteria are tuned for exactly one use case and would need rewriting, not reconfiguring, for a different one.
+3. **My two survivors were both about Jev.** The items that cleared the gate on the live run were TypeSafe's own launch post and Cloudflare listing Jev in its catalogue. The sample set was assembled during Jev's launch week, so that's a fair test of the machinery and a poor test of whether this radar surfaces competitors you didn't already know about. A week of real trending pages would tell you that; nine curated items can't.
+4. **The architecture generalizes further than the specifics do.** The "cheap filter → gate → expensive stage only on survivors" shape applies to a lot of problems — lead scoring, ticket triage, moderation queues, research screening. The categories, the gate thresholds, and Jev's specific question criteria are tuned for exactly one use case and would need rewriting, not reconfiguring, for a different one.
 
 ## The verdict
 
-Jev does what it says: fast, structured, multi-question judgments that make a cheap-filter-before-expensive-stage architecture actually work. The three-question-in-one-call design is genuinely efficient, and 78% of items never reaching an expensive stage is a real number from a real run, not a projection. The gaps I found — the latency delta, the unused Noul field, the discarded distributions, the step-budget risk — weren't reasons to distrust the core claim. They were just the ordinary cost of finding out for real instead of taking a launch post's word for it.
+In this pipeline, Jev did the job I wanted it to do: fast, structured, multi-question judgment sitting in front of more expensive stages. The three-question-in-one-call design is genuinely efficient, and seven of nine items never reaching an expensive stage is a real number from a real run rather than a projection — though nine items demonstrate the shape, not a production filter rate. Speed and structure are what I measured. On whether it judges *well*, all I can say is that it agreed with a far larger model on the one call this architecture actually depends on. The gaps I found — the latency delta, the unused Noul field, the discarded distributions, the step-budget risk — weren't reasons to distrust the core claim. They were just the ordinary cost of finding out for real instead of taking a launch post's word for it.
 
 ---
 

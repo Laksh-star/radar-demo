@@ -164,6 +164,15 @@ cleaned console trace from one such run. Headline numbers from that run:
 python3 benchmark/run_benchmark.py   # needs TYPESAFE_API_KEY + ANTHROPIC_API_KEY
 ```
 
+`benchmark/agreement.json` is a second, smaller check: the same ten sample
+signals put through Jev *and* Claude Sonnet with identical questions, to see
+whether the fast model's judgment tracks a much larger one. Category
+agreement was 7 of 10 — all three disagreements boundary calls between
+adjacent relevant buckets, and 4 of 4 agreement on the genuinely irrelevant
+items, which is the call the gate actually routes on. Agreement isn't
+accuracy and Sonnet isn't ground truth, but it's the cheapest sanity check
+available before trusting a classifier with a budget.
+
 ## What's real vs. mocked
 
 | File | Status | Notes |

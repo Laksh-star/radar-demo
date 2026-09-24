@@ -61,7 +61,11 @@ class ClaudeGenerate(GenerateProvider):
             max_tokens=200,
             messages=[{"role": "user", "content": prompt}],
         )
-        return response.content[0].text.strip()
+        # same reason as playground.py's race lane: the first block may be a
+        # thinking block, which has no .text
+        return next(
+            (b.text for b in response.content if getattr(b, "type", None) == "text"), ""
+        ).strip()
 
 
 class MockGenerate(GenerateProvider):
